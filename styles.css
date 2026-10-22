@@ -1,0 +1,108 @@
+:root{
+  --yellow:#F7C600; --yellow-d:#E0B200; --ink:#151515; --ink-2:#222; --paper:#F7F6F2;
+  --card:#fff; --line:#e4e2da; --muted:#6b6b6b;
+  --green:#1f9d55; --amber:#e8930c; --red:#e23b3b;
+  --r:14px; --shadow:0 2px 10px rgba(0,0,0,.06);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);-webkit-text-size-adjust:100%}
+body{padding-bottom:76px} /* room for mobile tabbar */
+a{color:inherit}
+button{font-family:inherit}
+.hidden{display:none!important}
+
+/* ---- Topbar ---- */
+.topbar{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;display:flex;align-items:center;gap:10px;padding:12px 16px}
+.topbar .logo{font-weight:800;letter-spacing:.5px}
+.topbar .logo b{color:var(--yellow)}
+.topbar .who{margin-left:auto;font-size:13px;opacity:.85;text-align:right;line-height:1.2}
+.topbar .who small{display:block;opacity:.6}
+.topbar .out{background:transparent;border:1px solid #444;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+
+/* ---- Layout ---- */
+.wrap{max-width:1040px;margin:0 auto;padding:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+h1{font-size:22px;margin:2px 0 14px}
+h2{font-size:16px;margin:22px 0 10px}
+.sub{color:var(--muted);font-size:13px;margin:-6px 0 14px}
+
+/* ---- Cards ---- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.stat .n{font-size:26px;font-weight:800}
+.stat .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+
+/* ---- Buttons ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--yellow);color:var(--ink);border:none;border-radius:10px;padding:13px 16px;font-weight:700;font-size:15px;cursor:pointer;width:100%}
+.btn:active{transform:translateY(1px)}
+.btn.sec{background:#fff;border:1px solid var(--line)}
+.btn.dark{background:var(--ink);color:#fff}
+.btn.sm{width:auto;padding:9px 13px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.danger{background:var(--red);color:#fff}
+
+/* ---- Forms ---- */
+label.f{display:block;font-size:13px;font-weight:600;margin:12px 0 5px}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff;font-family:inherit}
+textarea{min-height:70px;resize:vertical}
+
+/* ---- Pills / RAG ---- */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.rag-green{background:#e3f4ea;color:var(--green)}
+.rag-amber{background:#fcefd7;color:var(--amber)}
+.rag-red{background:#fbe1e1;color:var(--red)}
+.dot{width:9px;height:9px;border-radius:50%}
+.dot.green{background:var(--green)}.dot.amber{background:var(--amber)}.dot.red{background:var(--red)}
+.tag{background:#eee;border-radius:6px;padding:2px 8px;font-size:12px;color:#444}
+
+/* ---- List rows ---- */
+.listrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.listrow:last-child{border-bottom:none}
+.listrow .main{flex:1;min-width:0}
+.listrow .main b{display:block}
+.listrow .main small{color:var(--muted)}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--yellow);color:var(--ink);display:grid;place-items:center;font-weight:800;flex:none}
+
+/* ---- Rating buttons (feedback form) ---- */
+.rate{display:flex;gap:6px;margin-top:6px}
+.rate button{flex:1;padding:12px 0;border:1px solid var(--line);background:#fff;border-radius:10px;font-weight:700;cursor:pointer}
+.rate button.on{background:var(--ink);color:var(--yellow);border-color:var(--ink)}
+.rate button.na{flex:1.6;font-size:12px;font-weight:600}
+.q{padding:14px 0;border-bottom:1px solid var(--line)}
+.q .qt{font-size:14px}
+
+/* ---- Tabs (segmented) ---- */
+.seg{display:flex;gap:6px;background:#ebe9e2;padding:4px;border-radius:12px;margin-bottom:14px;overflow:auto}
+.seg button{flex:1;white-space:nowrap;padding:9px 12px;border:none;background:transparent;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;color:#555}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:var(--shadow)}
+
+/* ---- Bottom tab bar (mobile nav) ---- */
+.tabbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;z-index:30}
+.tabbar a{flex:1;text-align:center;padding:9px 4px 11px;font-size:11px;color:var(--muted);text-decoration:none}
+.tabbar a .ic{font-size:19px;display:block}
+.tabbar a.on{color:var(--ink);font-weight:700}
+.tabbar a.on .ic{filter:none}
+
+/* ---- Login ---- */
+.login{max-width:420px;margin:6vh auto;padding:0 18px}
+.login .hero{text-align:center;margin-bottom:18px}
+.login .robo{font-size:46px}
+.banner{border-radius:12px;padding:12px 14px;font-size:13px;margin:10px 0;display:flex;gap:10px;align-items:flex-start}
+.banner.ok{background:#e3f4ea;color:#14663a}
+.banner.warn{background:#fcefd7;color:#8a5a00}
+.banner.err{background:#fbe1e1;color:#9b1c1c}
+
+.empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
+.note{font-size:12px;color:var(--muted)}
+.right{margin-left:auto}
+hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
+table.mini{width:100%;border-collapse:collapse;font-size:13px}
+table.mini th,table.mini td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+table.mini th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase}
+.topnav{display:none;gap:4px;margin-left:12px}
+.topnav button{background:transparent;border:none;color:#ddd;padding:6px 12px;border-radius:8px;font-size:14px;cursor:pointer}
+.topnav button.on{background:#333;color:#fff}
+@media(min-width:720px){ body{padding-bottom:16px} .tabbar{display:none} .topnav{display:flex} }
