@@ -37,6 +37,27 @@ function toggleDemo(cb: HTMLInputElement): void {
   try { localStorage.setItem('robobox_demo', DEMO.on ? '1' : '0'); } catch (e) { /* ignore */ }
 }
 
+/* ---------- file storage (IndexedDB) for material uploads up to 20 MB ----------
+   ponytail: per-device IndexedDB blob store — fine for the prototype; a real deployment
+   points fileSave/fileGet at object storage (S3 / Supabase Storage). */
+const MAX_FILE = 20 * 1024 * 1024;
+function idb(): Promise<IDBDatabase> {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('robobox_files', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('files');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function fileSave(id: string, blob: Blob): Promise<void> {
+  const db = await idb();
+  await new Promise<void>((res, rej) => { const tx = db.transaction('files', 'readwrite'); tx.objectStore('files').put(blob, id); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+}
+async function fileGet(id: string): Promise<Blob | undefined> {
+  const db = await idb();
+  return new Promise((res, rej) => { const tx = db.transaction('files', 'readonly'); const g = tx.objectStore('files').get(id); g.onsuccess = () => res(g.result as Blob | undefined); g.onerror = () => rej(g.error); });
+}
+
 /* ---------- geofence (native Geolocation + haversine) ---------- */
 interface LatLng { lat: number; lng: number; }
 function haversine(a: LatLng, b: LatLng): number { // metres
@@ -87,6 +108,20 @@ function teacherRag(name: string): { key: RagOrNone; avg: number | null; visits:
 const ragPill = (key: RagOrNone): string => key === 'none'
   ? '<span class="pill tag">Not yet rated</span>'
   : `<span class="pill rag-${key}"><span class="dot ${key}"></span>${key[0].toUpperCase() + key.slice(1)}</span>`;
+
+// RAG is auto-calculated from the moderator's ratings + critical standards — never chosen by hand.
+// ponytail: default thresholds (avg ≥4 green, ≥3 amber, else red; critical fails & safety escalate).
+// Confirm these with Robobox before go-live — this function is the single calibration knob.
+function computeRag(ratings: Record<string, number | 'na'>, critical: Record<string, string>): RagKey {
+  if (critical['N9'] === 'Yes') return 'red'; // safety concern → immediate red, regardless of score
+  const vals = Object.values(ratings).filter((v): v is number => typeof v === 'number');
+  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  const fails = ['N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'N8'].filter((k) => critical[k] === 'No').length;
+  let key: RagKey = avg == null ? 'amber' : avg >= 4 ? 'green' : avg >= 3 ? 'amber' : 'red';
+  if (fails >= 2) key = 'red';
+  else if (fails === 1 && key === 'green') key = 'amber';
+  return key;
+}
 
 /* ---------- attendance ---------- */
 function teacherAtt(name: string): Attendance[] { return STORE.get('attendance').filter((a) => a.teacher.toLowerCase() === name.toLowerCase()).sort((a, b) => b.date.localeCompare(a.date)); }
@@ -303,18 +338,44 @@ function materialsView(u: User): string {
   return `<h1>Materials</h1><p class="sub">Handbook, curriculum & resources from Robobox.</p>
     ${canAdd ? `<div class="card"><h2 style="margin-top:0">Add material</h2>
       <label class="f">Title</label><input id="mtTitle" placeholder="e.g. Teacher Handbook v2">
-      <label class="f">Link (Drive / URL)</label><input id="mtLink" placeholder="https://…">
+      <label class="f">Link (Drive / URL)</label><input id="mtLink" placeholder="https://… — or attach a file below">
+      <label class="f">Or attach a file (max 20 MB)</label><input id="mtFile" type="file">
       <label class="f">Note</label><input id="mtNote" placeholder="Optional">
       <div style="height:10px"></div><button class="btn" onclick="addMaterial()">Publish</button></div>` : ''}
-    <div class="card">${mats.length ? mats.map((m) => `<div class="listrow"><div class="avatar">📄</div>
-      <div class="main"><b>${esc(m.title)}</b><small>${esc(m.note || '')} · by ${esc(m.by)}</small></div>
-      <a class="btn sec sm" href="${esc(m.link)}" target="_blank" rel="noopener">Open</a></div>`).join('') : '<div class="empty">No materials yet.</div>'}</div>`;
+    <div class="card">${mats.length ? mats.map((m) => {
+      const isFile = m.kind === 'file';
+      const meta = isFile ? `${esc(m.fileName)} · ${((m.size || 0) / 1048576).toFixed(1)} MB` : esc(m.link);
+      const action = isFile
+        ? `<button class="btn sec sm" onclick="openFile('${m.id}')">Download</button>`
+        : `<a class="btn sec sm" href="${esc(m.link)}" target="_blank" rel="noopener">Open</a>`;
+      return `<div class="listrow"><div class="avatar">${isFile ? '📎' : '🔗'}</div>
+        <div class="main"><b>${esc(m.title)}</b><small>${esc(m.note || '')} · ${meta} · by ${esc(m.by)}</small></div>${action}</div>`;
+    }).join('') : '<div class="empty">No materials yet.</div>'}</div>`;
 }
-function addMaterial(): void {
+async function addMaterial(): Promise<void> {
   const u = SESSION.get()!;
-  if (!$('mtTitle').value) { flash('err', 'Title required.'); return; }
-  STORE.add('materials', { title: $('mtTitle').value, link: $('mtLink').value || '#', note: $('mtNote').value, by: u.name });
+  const title = $('mtTitle').value;
+  if (!title) { flash('err', 'Title required.'); return; }
+  const fileInput = $('mtFile') as HTMLInputElement;
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if (file) {
+    if (file.size > MAX_FILE) { flash('err', `File is ${(file.size / 1048576).toFixed(1)} MB — max 20 MB.`); return; }
+    const id = 'mat_file_' + Date.now();
+    try { await fileSave(id, file); } catch (e) { flash('err', 'Could not store the file on this device.'); return; }
+    STORE.add('materials', { id, title, note: $('mtNote').value, by: u.name, kind: 'file', fileName: file.name, size: file.size, mime: file.type });
+  } else {
+    STORE.add('materials', { title, note: $('mtNote').value, by: u.name, kind: 'link', link: $('mtLink').value || '#' });
+  }
   flash('ok', 'Published.'); render();
+}
+async function openFile(id: string): Promise<void> {
+  const blob = await fileGet(id);
+  if (!blob) { flash('err', 'File not found on this device.'); return; }
+  const mat = STORE.get('materials').find((m) => m.id === id);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = mat?.fileName || 'material';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 /* ================= MODERATOR VIEWS ================= */
@@ -369,18 +430,22 @@ function mForm(): string {
   const rq = (id: string, label: string) => `<div class="q"><div class="qt">${esc(label)}</div>
     <div class="rate">${CONFIG.ratingScale.map((r) => `<button title="${r.label}" onclick="setRate(this,'${id}',${r.v})">${r.v}</button>`).join('')}
     <button class="na" onclick="setRate(this,'${id}','na')">N/A</button></div></div>`;
-  const cq = (id: string, label: string, opts: string[]) => `<label class="f">${esc(label)}</label><select onchange="setCritical('${id}',this.value)">${['', ...opts].map((o) => `<option ${v.critical[id] === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  // Critical standards use the same one-tap segmented control as the ratings (consistent input).
+  const cq = (id: string, label: string, opts: string[]) => `<div class="q"><div class="qt">${esc(label)}</div>
+    <div class="rate">${opts.map((o) => { const cls = o === 'Yes' ? 'yes' : o === 'No' ? 'no' : ''; return `<button class="${cls}${v.critical[id] === o ? ' on' : ''}" onclick="setCritical(this,'${id}','${o}')">${o}</button>`; }).join('')}</div></div>`;
   return `<h1>Feedback · ${esc(v.teacher)}</h1><p class="sub">${esc(school.name)} · ${todayStr()}</p>
     <div class="card"><div class="row"><div style="flex:1"><label class="f">Grade/Batch</label><select id="vGrade">${CONFIG.grades.map((g) => `<option>${g}</option>`).join('')}</select></div>
       <div style="flex:1"><label class="f">Module</label><select id="vModule">${CONFIG.modules.map((m) => `<option>${m}</option>`).join('')}</select></div>
       <div style="flex:1"><label class="f">Students present</label><input id="vStudents" type="number" min="0" value="0"></div></div></div>
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div><div style="font-weight:700">Auto status (RAG)</div><div class="note">Calculated live from your ratings & critical standards — not chosen manually.</div></div>
+      <span id="ragLive">${ragLiveHtml(v)}</span>
+    </div>
     ${CONFIG.pillars.map((p) => `<h2>${p.id} · ${p.name}</h2><div class="card">${p.q.map((q) => rq(q[0], q[0] + '. ' + q[1])).join('')}</div>`).join('')}
     <h2>Critical standards</h2><div class="card">${CONFIG.critical.map((c) => cq(c[0], c[0] + '. ' + c[1], c[2])).join('')}</div>
     <h2>Coordinator judgement</h2><div class="card">
       <label class="f">Comfortable with teacher handling this class independently?</label>
       <select id="jInd">${CONFIG.judgement.independence.map((o) => `<option>${o}</option>`).join('')}</select>
-      <label class="f">Current support status (RAG)</label>
-      <select id="jRag"><option value="green">${CONFIG.rag.green}</option><option value="amber">${CONFIG.rag.amber}</option><option value="red">${CONFIG.rag.red}</option></select>
       <label class="f">Main improvement area</label><select id="jImp">${CONFIG.judgement.improvement.map((o) => `<option>${o}</option>`).join('')}</select>
       <label class="f">Action required</label><select id="jAct">${CONFIG.judgement.action.map((o) => `<option>${o}</option>`).join('')}</select>
       <label class="f">Observation / evidence (brief)</label><textarea id="jNote" placeholder="One short example, especially for a 1 or 2"></textarea>
@@ -388,15 +453,27 @@ function mForm(): string {
     <button class="btn" onclick="submitVisit()">Submit feedback</button>
     <button class="btn sec sm" style="margin-top:8px" onclick="backToPickTeacher()">Back</button>`;
 }
+// Live RAG preview: amber default once there's input; blank until the moderator rates anything.
+function ragLiveHtml(v: Visit): string {
+  const hasInput = Object.values(v.ratings).some((x) => typeof x === 'number') || Object.values(v.critical).some((x) => x && x !== '');
+  return hasInput ? ragPill(computeRag(v.ratings, v.critical)) : '<span class="pill tag">Awaiting input</span>';
+}
+function updateRagLive(): void { const el = document.getElementById('ragLive'); if (el && VISIT) el.innerHTML = ragLiveHtml(VISIT); }
 function pickVisitTeacher(name: string): void { VISIT!.teacher = name; VISIT!.step = 'form'; render(); }
 function backToPickTeacher(): void { VISIT!.step = 'pickTeacher'; render(); }
 function cancelVisit(): void { VISIT = null; render(); }
-function setCritical(id: string, value: string): void { VISIT!.critical[id] = value; }
-// Toggle in place (no re-render) so other uncontrolled fields — grade, module, students, RAG — aren't wiped.
+// Both inputs toggle in place (no re-render, so other fields aren't wiped) and refresh the live RAG.
+function setCritical(btn: HTMLElement, id: string, value: string): void {
+  VISIT!.critical[id] = value;
+  btn.parentElement!.querySelectorAll('button').forEach((b) => b.classList.remove('on'));
+  btn.classList.add('on');
+  updateRagLive();
+}
 function setRate(btn: HTMLElement, id: string, v: number | 'na'): void {
   VISIT!.ratings[id] = v;
   btn.parentElement!.querySelectorAll('button').forEach((b) => b.classList.remove('on'));
   btn.classList.add('on');
+  updateRagLive();
 }
 function submitVisit(): void {
   const u = SESSION.get()!; const v = VISIT!;
@@ -408,7 +485,7 @@ function submitVisit(): void {
     grade: $('vGrade').value, module: $('vModule').value, students: +$('vStudents').value || 0,
     ratings, critical: v.critical,
     judgement: { independence: $('jInd').value, improvement: $('jImp').value, action: $('jAct').value },
-    rag: $('jRag').value as RagKey, note: $('jNote').value, safety, score: null,
+    rag: computeRag(v.ratings, v.critical), note: $('jNote').value, safety, score: null,
   };
   fb.score = visitScore(fb);
   STORE.add('feedback', fb);

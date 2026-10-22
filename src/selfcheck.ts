@@ -29,5 +29,22 @@
   ok(vscore({ A1: 'na' }) === null, 'all-NA => no score');
   ok(vscore({ A1: 5, A2: 5 }) === 5, 'plain average');
 
+  // Auto-RAG rule (kept in sync with app.ts computeRag).
+  const rag = (ratings: Record<string, number | 'na'>, critical: Record<string, string>): string => {
+    if (critical['N9'] === 'Yes') return 'red';
+    const v = Object.values(ratings).filter((x): x is number => typeof x === 'number');
+    const avg = v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    const fails = ['N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'N8'].filter((k) => critical[k] === 'No').length;
+    let key = avg == null ? 'amber' : avg >= 4 ? 'green' : avg >= 3 ? 'amber' : 'red';
+    if (fails >= 2) key = 'red'; else if (fails === 1 && key === 'green') key = 'amber';
+    return key;
+  };
+  ok(rag({ A1: 5, A2: 4 }, {}) === 'green', 'high avg → green');
+  ok(rag({ A1: 3, A2: 4 }, {}) === 'amber', 'mid avg → amber');
+  ok(rag({ A1: 2, A2: 2 }, {}) === 'red', 'low avg → red');
+  ok(rag({ A1: 5 }, { N9: 'Yes' }) === 'red', 'safety overrides to red');
+  ok(rag({ A1: 5 }, { N1: 'No' }) === 'amber', 'one critical fail downgrades green→amber');
+  ok(rag({ A1: 5 }, { N1: 'No', N2: 'No' }) === 'red', 'two critical fails → red');
+
   console.log('selfcheck OK');
 })();

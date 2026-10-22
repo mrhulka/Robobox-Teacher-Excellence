@@ -22,7 +22,7 @@ interface Feedback {
 interface Leave { id?: string; teacher: string; mod?: string; type: string; from: string; to: string; reason: string; status: string; }
 interface Requisition { id?: string; teacher: string; mod?: string; project: string; category: string; items: string; qty: number; note: string; status: string; }
 interface Task { id?: string; teacher: string; title: string; detail: string; due: string; by: string; status: string; doneAt?: string; }
-interface Material { id?: string; title: string; link: string; note: string; by: string; }
+interface Material { id?: string; title: string; note: string; by: string; kind: 'link' | 'file'; link?: string; fileName?: string; size?: number; mime?: string; }
 
 // Every collection the store holds. Keys double as STORE.get() arguments.
 interface Collections {
