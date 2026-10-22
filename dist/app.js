@@ -25,12 +25,19 @@ const SESSION = {
    Off by default. When on, GPS is simulated and geofence setup skips the native confirm()
    dialog — so every flow is testable inside a sandboxed iframe or on a laptop with no GPS.
    On a real phone with location allowed, leave it off and the real 200 m geofence applies. */
-const DEMO = { on: (() => { try {
-        return localStorage.getItem('robobox_demo') === '1';
-    }
-    catch (e) {
-        return false;
-    } })() };
+// Default ON inside an iframe (e.g. a hosted preview that blocks GPS), OFF on a normal
+// top-level page (real deployment). An explicit toggle choice always wins.
+const DEMO = { on: (() => {
+        try {
+            const stored = localStorage.getItem('robobox_demo');
+            if (stored != null)
+                return stored === '1';
+            return window.self !== window.top; // in an iframe → simulate location
+        }
+        catch (e) {
+            return true;
+        }
+    })() };
 const DEMO_POS = { lat: 19.0760, lng: 72.8777, acc: 5 };
 function toggleDemo(cb) {
     DEMO.on = cb.checked;
@@ -153,6 +160,7 @@ function viewLogin() {
           <input type="checkbox" style="width:auto" ${DEMO.on ? 'checked' : ''} onchange="toggleDemo(this)">
           Demo mode — simulate location (for testing without GPS)
         </label>
+        ${DEMO.on ? '<p class="note" style="margin:6px 0 0">📍 Demo mode is on — location is simulated, so the geofence always passes. Turn it off on a real device to use true GPS.</p>' : ''}
       </div></div>`;
     }
     if (LOGIN.role === 'teacher') {
