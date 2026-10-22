@@ -178,7 +178,8 @@ function render() {
     const active = TAB[u.role] || tabs[0].id;
     app.innerHTML = `
     <div class="topbar">
-      <span class="logo">THE <b>ROBOBOX</b></span>
+      <img class="logo-img" src="assets/logo-mark.webp" alt="The Robobox">
+      <span class="portal-tag">Teacher Excellence</span>
       <nav class="topnav">${tabs.map((t) => `<button class="${t.id === active ? 'on' : ''}" onclick="go('${t.id}')">${t.label}</button>`).join('')}</nav>
       <span class="who">${esc(u.name)}<small>${u.role === 'mod' ? 'Coordinator' : u.role === 'ceo' ? 'CEO / Outsight' : 'Teacher'}</small></span>
       <button class="out" onclick="logout()">Exit</button>
@@ -191,9 +192,8 @@ function logout() { SESSION.clear(); render(); }
 let LOGIN = { role: null };
 function viewLogin() {
     if (!LOGIN.role) {
-        return `<div class="login"><div class="hero"><div class="robo">🤖</div>
-      <h1 style="margin:.3em 0">Teacher Excellence Portal</h1>
-      <p class="sub">One Robobox classroom, delivered consistently.</p></div>
+        return `<div class="login"><div class="hero"><img class="logo-full" src="assets/logo.webp" alt="The Robobox — Teacher Excellence">
+      <p class="sub" style="margin-top:12px">Teacher Excellence Portal — one Robobox classroom, delivered consistently.</p></div>
       ${BANNER}
       <div class="card">
         <button class="btn" onclick="pickRole('teacher')">👩‍🏫 I'm a Teacher</button>
@@ -344,9 +344,9 @@ function tLeave(u) {
 function leaveRow(l, forMod) {
     const cls = l.status === 'Approved' ? 'rag-green' : l.status === 'Rejected' ? 'rag-red' : 'tag';
     return `<div class="listrow"><div class="main"><b>${esc(l.type)} · ${fmtD(l.from)}–${fmtD(l.to)}</b><small>${esc(l.reason || '')}${forMod ? ' · ' + esc(l.teacher) : ''}</small></div>
-    <span class="pill ${cls}">${l.status}</span>
+    <div class="actions"><span class="pill ${cls}">${l.status}</span>
     ${forMod && l.status === 'Pending' ? `<button class="btn sec sm" onclick="setLeave('${l.id}','Approved')">✓</button><button class="btn sec sm" onclick="setLeave('${l.id}','Rejected')">✗</button>` : ''}
-    ${!forMod && l.status === 'Pending' ? `<button class="btn sec sm" onclick="setLeave('${l.id}','Cancelled')">Withdraw</button>` : ''}</div>`;
+    ${!forMod && l.status === 'Pending' ? `<button class="btn sec sm" onclick="setLeave('${l.id}','Cancelled')">Withdraw</button>` : ''}</div></div>`;
 }
 function submitLeave() {
     const u = SESSION.get();
@@ -369,8 +369,8 @@ function tRequests(u) {
 function reqRow(r, forMod) {
     const cls = r.status === 'Fulfilled' ? 'rag-green' : r.status === 'Approved' ? 'rag-amber' : 'tag';
     return `<div class="listrow"><div class="main"><b>${esc(r.items)} ×${r.qty}</b><small>${esc(r.project)} · ${esc(r.category)}${forMod ? ' · ' + esc(r.teacher) : ''}</small></div>
-    <span class="pill ${cls}">${r.status}</span>
-    ${forMod && r.status !== 'Fulfilled' ? `<button class="btn sec sm" onclick="setReq('${r.id}','${r.status === 'Open' ? 'Approved' : 'Fulfilled'}')">${r.status === 'Open' ? 'Approve' : 'Mark fulfilled'}</button>` : ''}</div>`;
+    <div class="actions"><span class="pill ${cls}">${r.status}</span>
+    ${forMod && r.status !== 'Fulfilled' ? `<button class="btn sec sm" onclick="setReq('${r.id}','${r.status === 'Open' ? 'Approved' : 'Fulfilled'}')">${r.status === 'Open' ? 'Approve' : 'Mark fulfilled'}</button>` : ''}</div></div>`;
 }
 function submitReq() {
     const u = SESSION.get();
@@ -655,8 +655,8 @@ function mCalendar(u) {
     const visits = STORE.get('feedback').filter((f) => f.mod === u.name).sort((a, b) => b.date.localeCompare(a.date));
     const leaves = STORE.get('leaves').filter((l) => l.mod === u.name && l.status === 'Approved');
     const planRow = (p, done) => `<div class="listrow"><div class="main"><b>${esc(STORE.school(p.school).name)}</b><small>${fmtD(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</small></div>
-    ${done ? `<span class="pill ${p.status === 'Done' ? 'rag-green' : 'tag'}">${p.status === 'Done' ? 'Done' : 'Missed'}</span>`
-        : `<button class="btn sec sm" onclick="donePlan('${p.id}')">Done</button><button class="btn sec sm" onclick="delPlan('${p.id}')">✕</button>`}</div>`;
+    <div class="actions">${done ? `<span class="pill ${p.status === 'Done' ? 'rag-green' : 'tag'}">${p.status === 'Done' ? 'Done' : 'Missed'}</span>`
+        : `<button class="btn sec sm" onclick="donePlan('${p.id}')">Done</button><button class="btn sec sm" onclick="delPlan('${p.id}')">✕</button>`}</div></div>`;
     return `<h1>Calendar</h1><p class="sub">Plan your school visits for the month.</p>
     <div class="card"><h2 style="margin-top:0">Plan a visit</h2>
       <label class="f">School</label><select id="plSchool">${schools.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
