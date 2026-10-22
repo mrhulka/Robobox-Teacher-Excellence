@@ -1,0 +1,14 @@
+{
+  "name": "robobox-teacher-excellence",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Robobox Teacher Excellence Portal — mobile-first, dependency-free TypeScript.",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "check": "tsc && node dist/selfcheck.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

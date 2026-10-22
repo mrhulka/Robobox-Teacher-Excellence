@@ -1,6 +1,6 @@
-// AUTO-GENERATED seed from School-Teacher Excel + feedback form + RAG config.
-// This is the master data + the ONLY place app state is shaped. Swap STORE (store.js) for a real backend later.
-window.SEED = {
+// AUTO-GENERATED from the School-Teacher Excel. Regenerate; do not hand-edit.
+// Classic script (no import/export): SEED is a global shared with the other scripts.
+const SEED: SeedData = {
   "moderators": [
     "APARNA",
     "Madhura",
