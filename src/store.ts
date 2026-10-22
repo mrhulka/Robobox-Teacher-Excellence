@@ -11,7 +11,9 @@ const STORE = (() => {
     };
   }
   function load(): Collections {
-    try { const raw = localStorage.getItem(K); if (raw) return JSON.parse(raw) as Collections; } catch (e) { /* ignore */ }
+    // Spread over a fresh seedDb so a db saved by an older version (missing newer
+    // collections like `plans`) is backfilled instead of leaving them undefined.
+    try { const raw = localStorage.getItem(K); if (raw) return { ...seedDb(), ...JSON.parse(raw) } as Collections; } catch (e) { /* ignore */ }
     return seedDb();
   }
 
