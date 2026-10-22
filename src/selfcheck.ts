@@ -46,5 +46,12 @@
   ok(rag({ A1: 5 }, { N1: 'No' }) === 'amber', 'one critical fail downgrades green→amber');
   ok(rag({ A1: 5 }, { N1: 'No', N2: 'No' }) === 'red', 'two critical fails → red');
 
+  // CSV cell escaping (kept in sync with app.ts csvCell).
+  const cell = (v: unknown) => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  ok(cell('abc') === 'abc', 'plain cell unquoted');
+  ok(cell('a,b') === '"a,b"', 'comma → quoted');
+  ok(cell('he "hi"') === '"he ""hi"""', 'inner quotes doubled');
+  ok(cell('a\nb') === '"a\nb"', 'newline → quoted');
+
   console.log('selfcheck OK');
 })();

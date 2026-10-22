@@ -57,6 +57,18 @@ async function fileGet(id: string): Promise<Blob | undefined> {
   const db = await idb();
   return new Promise((res, rej) => { const tx = db.transaction('files', 'readonly'); const g = tx.objectStore('files').get(id); g.onsuccess = () => res(g.result as Blob | undefined); g.onerror = () => rej(g.error); });
 }
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+// Report export → CSV (opens in Excel/Sheets). ponytail: CSV covers it; add .xlsx only if formatting is required.
+function csvCell(v: unknown): string { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function downloadCSV(filename: string, rows: unknown[][]): void {
+  const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n');
+  triggerDownload(new Blob([csv], { type: 'text/csv' }), filename);
+}
 
 /* ---------- geofence (native Geolocation + haversine) ---------- */
 interface LatLng { lat: number; lng: number; }
@@ -121,6 +133,16 @@ function computeRag(ratings: Record<string, number | 'na'>, critical: Record<str
   if (fails >= 2) key = 'red';
   else if (fails === 1 && key === 'green') key = 'amber';
   return key;
+}
+// Change from first to latest scored visit (growth +, degrowth −).
+function teacherGrowth(name: string): number | null {
+  const sc = teacherFeedback(name).slice().reverse().map((f) => f.score).filter((x): x is number => x != null);
+  return sc.length > 1 ? sc[sc.length - 1] - sc[0] : null;
+}
+// Coordinator score = mean of their teachers' average scores (teacher-weighted).
+function coordScore(mod: string): number | null {
+  const avgs = teachersOfMod(mod).map((t) => teacherRag(t.name).avg).filter((x): x is number => x != null);
+  return avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
 }
 
 /* ---------- attendance ---------- */
@@ -385,10 +407,7 @@ async function openFile(id: string): Promise<void> {
   const blob = await fileGet(id);
   if (!blob) { flash('err', 'File not found on this device.'); return; }
   const mat = STORE.get('materials').find((m) => m.id === id);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = mat?.fileName || 'material';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  triggerDownload(blob, mat?.fileName || 'material');
 }
 
 /* ================= MODERATOR VIEWS ================= */
@@ -396,8 +415,12 @@ let SEL: string | null = null; // coordinator's currently opened teacher (perfor
 function openTeacher(name: string): void { SEL = name; render(); }
 function closeTeacher(): void { SEL = null; render(); }
 function mTeachers(u: User): string {
-  const ts = teachersOfMod(u.name);
+  const ts = teachersOfMod(u.name); const sc = coordScore(u.name);
   return `<h1>My teachers</h1><p class="sub">${ts.length} teachers · ${schoolsOfMod(u.name).length} schools · tap a teacher for their trend</p>
+    <div class="row" style="align-items:center;margin-bottom:12px">
+      <span class="pill tag">My score: <b style="margin-left:4px">${sc != null ? sc.toFixed(1) : '—'}</b></span>
+      <button class="btn sec sm right" onclick="reportCoordTeachers('${esc(u.name)}')">⬇ Download report</button>
+    </div>
     <div class="card">${ts.map((t) => {
       const rag = teacherRag(t.name); const al = avgLate(t.name);
       return `<div class="listrow" style="cursor:pointer" onclick="openTeacher('${esc(t.name)}')"><div class="avatar">${initials(t.name)}</div>
@@ -406,8 +429,9 @@ function mTeachers(u: User): string {
     }).join('')}</div>`;
 }
 // Performance trend for one teacher: every visit the coordinator logged, oldest→newest, with score deltas.
-function mTeacherDetail(name: string): string {
-  const t = STORE.teacher(name)!;
+// Shared performance block (KPIs + visit history), used by the coordinator's teacher detail
+// and by the teacher's own score tab — it's the teacher's own data either way.
+function perfInner(name: string, emptyMsg: string): string {
   const fb = teacherFeedback(name).slice().reverse(); // oldest first
   const scored = fb.filter((f) => f.score != null) as (Feedback & { score: number })[];
   const first = scored[0]?.score; const last = scored[scored.length - 1]?.score;
@@ -423,23 +447,31 @@ function mTeacherDetail(name: string): string {
     const dstr = delta == null ? '' : delta > 0.05 ? `<span style="color:var(--green)">▲ ${delta.toFixed(1)}</span>` : delta < -0.05 ? `<span style="color:var(--red)">▼ ${Math.abs(delta).toFixed(1)}</span>` : '<span class="note">no change</span>';
     return `<div class="q" style="padding:12px 0">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="flex:1;min-width:0"><b>${fmtD(f.date)}</b> <span class="note">· ${esc(STORE.school(f.school)!.name)} · ${esc(f.judgement.action)}</span></div>
+        <div style="flex:1;min-width:0"><b>${fmtD(f.date)}</b> <span class="note">· ${esc(STORE.school(f.school)!.name)} · ${esc(f.judgement.improvement)}</span></div>
         <div style="font-weight:800;white-space:nowrap">${s != null ? s.toFixed(1) : '—'} ${dstr}</div>
         ${ragPill(f.rag)}
       </div>
       <div style="height:8px;border-radius:5px;background:#eee;margin-top:8px;overflow:hidden"><div style="height:100%;width:${bar}%;background:var(--${f.rag})"></div></div>
     </div>`;
   }).join('');
-  return `<button class="btn sec sm" onclick="closeTeacher()">← All teachers</button>
-    <h1 style="margin-top:12px">${esc(name)}</h1><p class="sub">${esc(schoolsOfTeacher(t).map((s) => s.name).join(', '))}</p>
-    <div class="kpis" style="margin-bottom:14px">
+  return `<div class="kpis" style="margin-bottom:14px">
       <div class="stat"><div class="n" style="font-size:15px;padding-top:8px">${trend}</div><div class="l">Trend</div></div>
       <div class="stat"><div class="n">${scored.length ? (scored.reduce((a, b) => a + b.score, 0) / scored.length).toFixed(1) : '—'}</div><div class="l">Avg score</div></div>
       <div class="stat"><div class="n">${avgLateWindow(name, 'week')}m</div><div class="l">Delay · week</div></div>
       <div class="stat"><div class="n">${avgLateWindow(name, 'month')}m</div><div class="l">Delay · month</div></div>
     </div>
     <h2>Visit history</h2>
-    <div class="card">${fb.length ? rows : '<div class="empty">No visits yet. Log a visit from the Visit tab.</div>'}</div>`;
+    <div class="card">${fb.length ? rows : `<div class="empty">${emptyMsg}</div>`}</div>`;
+}
+function mTeacherDetail(name: string): string {
+  const t = STORE.teacher(name)!;
+  return `<button class="btn sec sm" onclick="closeTeacher()">← All teachers</button>
+    <h1 style="margin-top:12px">${esc(name)}</h1><p class="sub">${esc(schoolsOfTeacher(t).map((s) => s.name).join(', '))}</p>
+    ${perfInner(name, 'No visits yet. Log a visit from the Visit tab.')}`;
+}
+function tScore(u: User): string {
+  return `<h1>My performance</h1><p class="sub">Your ongoing score from coordinator classroom visits.</p>
+    ${perfInner(u.name, 'No visits yet. Your coordinator will rate you during school visits.')}`;
 }
 function mVisit(u: User): string {
   const schools = schoolsOfMod(u.name);
@@ -634,30 +666,65 @@ function cTeachers(): string {
   const ts = STORE.get('teachers').map((t) => ({ t, rag: teacherRag(t.name) }))
     .sort((a, b) => order[a.rag.key] - order[b.rag.key]);
   return `<h1>All teachers</h1><p class="sub">Sorted by risk (red first)</p>
-    <div class="card scrollx"><table class="mini"><tr><th>Teacher</th><th>Coordinator</th><th>Visits</th><th>Score</th><th>RAG</th></tr>
-    ${ts.map(({ t, rag }) => `<tr><td><b>${esc(t.name)}</b></td><td>${esc(t.mod)}</td><td>${rag.visits}</td><td>${rag.avg ? rag.avg.toFixed(1) : '—'}</td><td>${ragPill(rag.key)}</td></tr>`).join('')}
+    <div class="row" style="margin-bottom:12px"><button class="btn sec sm" onclick="reportAllTeachers()">⬇ Teachers CSV</button><button class="btn sec sm" onclick="reportVisits()">⬇ Visit log (over time)</button></div>
+    <div class="card scrollx"><table class="mini"><tr><th>Teacher</th><th>Coordinator</th><th>Visits</th><th>Score</th><th>Growth</th><th>RAG</th></tr>
+    ${ts.map(({ t, rag }) => { const g = teacherGrowth(t.name); return `<tr><td><b>${esc(t.name)}</b></td><td>${esc(t.mod)}</td><td>${rag.visits}</td><td>${rag.avg ? rag.avg.toFixed(1) : '—'}</td><td>${g == null ? '—' : (g > 0 ? '+' : '') + g.toFixed(1)}</td><td>${ragPill(rag.key)}</td></tr>`; }).join('')}
     </table></div>`;
 }
 function cModerators(): string {
   return `<h1>Coordinator performance</h1>
-    <div class="card scrollx"><table class="mini"><tr><th>Coordinator</th><th>Teachers</th><th>Schools</th><th>Visits</th><th>Avg score</th><th>Pending</th></tr>
+    <div class="row" style="margin-bottom:12px"><button class="btn sec sm" onclick="reportCoords()">⬇ Coordinators CSV</button></div>
+    <div class="card scrollx"><table class="mini"><tr><th>Coordinator</th><th>Teachers</th><th>Schools</th><th>Visits</th><th>Score</th><th>Pending</th></tr>
     ${STORE.get('moderators').map((m) => {
       const ts = teachersOfMod(m); const visits = STORE.get('feedback').filter((f) => f.mod === m);
-      const scores = visits.map((v) => v.score).filter((x): x is number => x != null);
-      const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
+      const sc = coordScore(m);
       const pending = STORE.get('leaves').filter((l) => l.mod === m && l.status === 'Pending').length + STORE.get('requests').filter((r) => r.mod === m && r.status === 'Open').length;
-      return `<tr><td><b>${esc(m)}</b></td><td>${ts.length}</td><td>${schoolsOfMod(m).length}</td><td>${visits.length}</td><td>${avg}</td><td>${pending || '—'}</td></tr>`;
+      return `<tr><td><b>${esc(m)}</b></td><td>${ts.length}</td><td>${schoolsOfMod(m).length}</td><td>${visits.length}</td><td>${sc != null ? sc.toFixed(1) : '—'}</td><td>${pending || '—'}</td></tr>`;
     }).join('')}</table></div>
-    <p class="note" style="margin-top:10px">Coverage = visits ÷ teachers. Low coverage means classrooms are unobserved.</p>`;
+    <p class="note" style="margin-top:10px">Coordinator score = average of their teachers' scores. Coverage = visits ÷ teachers.</p>`;
+}
+
+/* ================= report downloads (CSV) ================= */
+function reportCoordTeachers(mod: string): void {
+  const rows: unknown[][] = [['Teacher', 'Schools', 'Visits', 'Avg score', 'Latest RAG', 'Growth', 'Avg delay (min)']];
+  teachersOfMod(mod).forEach((t) => {
+    const r = teacherRag(t.name); const g = teacherGrowth(t.name);
+    rows.push([t.name, schoolsOfTeacher(t).map((s) => s.name).join('; '), r.visits, r.avg != null ? r.avg.toFixed(2) : '', r.key === 'none' ? 'Unrated' : r.key, g != null ? g.toFixed(2) : '', avgLate(t.name)]);
+  });
+  downloadCSV(`robobox-${mod}-teachers.csv`, rows);
+}
+function reportAllTeachers(): void {
+  const rows: unknown[][] = [['Teacher', 'Coordinator', 'Schools', 'Visits', 'Avg score', 'Latest RAG', 'Growth', 'Avg delay (min)']];
+  STORE.get('teachers').forEach((t) => {
+    const r = teacherRag(t.name); const g = teacherGrowth(t.name);
+    rows.push([t.name, t.mod, schoolsOfTeacher(t).map((s) => s.name).join('; '), r.visits, r.avg != null ? r.avg.toFixed(2) : '', r.key === 'none' ? 'Unrated' : r.key, g != null ? g.toFixed(2) : '', avgLate(t.name)]);
+  });
+  downloadCSV('robobox-all-teachers.csv', rows);
+}
+function reportCoords(): void {
+  const rows: unknown[][] = [['Coordinator', 'Teachers', 'Schools', 'Visits', 'Coordinator score', 'Pending']];
+  STORE.get('moderators').forEach((m) => {
+    const sc = coordScore(m);
+    const pending = STORE.get('leaves').filter((l) => l.mod === m && l.status === 'Pending').length + STORE.get('requests').filter((rq) => rq.mod === m && rq.status === 'Open').length;
+    rows.push([m, teachersOfMod(m).length, schoolsOfMod(m).length, STORE.get('feedback').filter((f) => f.mod === m).length, sc != null ? sc.toFixed(2) : '', pending]);
+  });
+  downloadCSV('robobox-coordinators.csv', rows);
+}
+function reportVisits(): void { // every visit, dated — pivot in Excel for growth/degrowth over time
+  const rows: unknown[][] = [['Date', 'Coordinator', 'Teacher', 'School', 'Grade', 'Module', 'Students', 'Score', 'RAG', 'Improvement', 'Action']];
+  STORE.get('feedback').slice().sort((a, b) => a.date.localeCompare(b.date)).forEach((f) => {
+    rows.push([f.date, f.mod, f.teacher, STORE.school(f.school)?.name || f.school, f.grade, f.module, f.students, f.score != null ? f.score.toFixed(2) : '', f.rag, f.judgement.improvement, f.judgement.action]);
+  });
+  downloadCSV('robobox-visits-timeseries.csv', rows);
 }
 
 /* ================= role tab config ================= */
 interface Tab { id: string; label: string; ic: string; }
 const ROLE_TABS: Record<Role, Tab[]> = {
   teacher: [
-    { id: 'home', label: 'Home', ic: '🏠' }, { id: 'att', label: 'Attendance', ic: '📅' },
-    { id: 'leave', label: 'Leave', ic: '🌴' }, { id: 'req', label: 'Requests', ic: '📦' },
-    { id: 'mat', label: 'Materials', ic: '📚' },
+    { id: 'home', label: 'Home', ic: '🏠' }, { id: 'score', label: 'Score', ic: '📈' },
+    { id: 'att', label: 'Attend', ic: '📅' }, { id: 'leave', label: 'Leave', ic: '🌴' },
+    { id: 'req', label: 'Requests', ic: '📦' }, { id: 'mat', label: 'Materials', ic: '📚' },
   ],
   mod: [
     { id: 'teachers', label: 'Teachers', ic: '👥' }, { id: 'visit', label: 'Visit', ic: '📍' },
@@ -670,7 +737,7 @@ const ROLE_TABS: Record<Role, Tab[]> = {
   ],
 };
 const VIEWS: Record<Role, Record<string, (u: User) => string>> = {
-  teacher: { home: tHome, att: tAttendance, leave: tLeave, req: tRequests, mat: materialsView },
+  teacher: { home: tHome, score: tScore, att: tAttendance, leave: tLeave, req: tRequests, mat: materialsView },
   mod: { teachers: (u) => SEL ? mTeacherDetail(SEL) : mTeachers(u), visit: (u) => VISIT ? mForm() : mVisit(u), leaves: mLeaves, tasks: mTasks, cal: mCalendar, mat: materialsView },
   ceo: { overview: cOverview, teachers: cTeachers, mods: cModerators, mat: materialsView },
 };
