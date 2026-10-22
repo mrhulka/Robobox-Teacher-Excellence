@@ -18,6 +18,17 @@ const SESSION = {
   clear() { localStorage.removeItem('robobox_session'); },
 };
 
+/* ---------- demo mode (testing without GPS) ----------
+   Off by default. When on, GPS is simulated and geofence setup skips the native confirm()
+   dialog — so every flow is testable inside a sandboxed iframe or on a laptop with no GPS.
+   On a real phone with location allowed, leave it off and the real 200 m geofence applies. */
+const DEMO = { on: (() => { try { return localStorage.getItem('robobox_demo') === '1'; } catch (e) { return false; } })() };
+const DEMO_POS = { lat: 19.0760, lng: 72.8777, acc: 5 };
+function toggleDemo(cb: HTMLInputElement): void {
+  DEMO.on = cb.checked;
+  try { localStorage.setItem('robobox_demo', DEMO.on ? '1' : '0'); } catch (e) { /* ignore */ }
+}
+
 /* ---------- geofence (native Geolocation + haversine) ---------- */
 interface LatLng { lat: number; lng: number; }
 function haversine(a: LatLng, b: LatLng): number { // metres
@@ -27,6 +38,7 @@ function haversine(a: LatLng, b: LatLng): number { // metres
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 function getPos(): Promise<{ lat: number; lng: number; acc: number }> {
+  if (DEMO.on) return Promise.resolve({ ...DEMO_POS });
   return new Promise((res, rej) => {
     if (!navigator.geolocation) return rej(new Error('Geolocation not supported on this device.'));
     navigator.geolocation.getCurrentPosition(
@@ -35,12 +47,12 @@ function getPos(): Promise<{ lat: number; lng: number; acc: number }> {
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
   });
 }
-// One GPS read. If the school has no geofence yet, offer to set it to the measured point
+// One GPS read. If the school has no geofence yet, set it to the measured point
 // (on-site, one-time). Returns {ok,dist} or null if aborted.
 async function atSchool(school: School): Promise<{ ok: boolean; dist: number } | null> {
   const pos = await getPos();
   if (school.lat == null) {
-    if (!confirm(`${school.name} has no geofence yet. Set it to your current location now?`)) return null;
+    if (!DEMO.on && !confirm(`${school.name} has no geofence yet. Set it to your current location now?`)) return null;
     STORE.setSchoolLoc(school.id, pos.lat, pos.lng);
   }
   const dist = haversine(pos, { lat: school.lat as number, lng: school.lng as number });
@@ -125,6 +137,10 @@ function viewLogin(): string {
         <button class="btn sec" onclick="pickRole('mod')">🧭 I'm a Moderator</button>
         <div style="height:10px"></div>
         <button class="btn sec" onclick="pickRole('ceo')">📊 CEO / Outsight team</button>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--muted)">
+          <input type="checkbox" style="width:auto" ${DEMO.on ? 'checked' : ''} onchange="toggleDemo(this)">
+          Demo mode — simulate location (for testing without GPS)
+        </label>
       </div></div>`;
   }
   if (LOGIN.role === 'teacher') {
