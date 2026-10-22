@@ -7,7 +7,7 @@ const STORE = (() => {
     function seedDb() {
         return {
             schools: SEED.schools, teachers: SEED.teachers, moderators: SEED.moderators,
-            attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [],
+            attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
         };
     }
     function load() {
@@ -40,6 +40,14 @@ const STORE = (() => {
             if (r)
                 Object.assign(r, patch);
             save();
+        },
+        remove(coll, id) {
+            const arr = db[coll];
+            const i = arr.findIndex((x) => x.id === id);
+            if (i >= 0) {
+                arr.splice(i, 1);
+                save();
+            }
         },
         setSchoolLoc(id, lat, lng) {
             const s = this.school(id);

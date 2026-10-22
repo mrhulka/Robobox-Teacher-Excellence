@@ -147,6 +147,15 @@ function avgLate(name) {
         return 0;
     return Math.round(recs.reduce((s, a) => s + (a.inLate || 0), 0) / recs.length);
 }
+const isoDaysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+// Average login delay over a window: rolling 7 days ('week') or current calendar month ('month').
+function avgLateWindow(name, window) {
+    const from = window === 'week' ? isoDaysAgo(6) : todayStr().slice(0, 7); // month = yyyy-mm prefix
+    const recs = teacherAtt(name).filter((a) => a.inTime && (window === 'week' ? a.date >= from : a.date.startsWith(from)));
+    if (!recs.length)
+        return 0;
+    return Math.round(recs.reduce((s, a) => s + (a.inLate || 0), 0) / recs.length);
+}
 /* ---------- small UI helpers ---------- */
 let BANNER = '';
 function flash(kind, msg) { const el = $('flash'); if (el)
@@ -157,7 +166,7 @@ function teachersOfMod(mod) { return STORE.get('teachers').filter((t) => t.mod.t
 function teachersAtSchool(id) { const s = STORE.school(id); return (s ? s.teachers : []).map((n) => STORE.teacher(n)).filter((t) => !!t); }
 /* ================= ROUTER ================= */
 const TAB = {};
-function go(tab) { const u = SESSION.get(); TAB[u.role] = tab; render(); }
+function go(tab) { const u = SESSION.get(); TAB[u.role] = tab; SEL = null; render(); }
 function render() {
     const u = SESSION.get();
     const app = $('app');
@@ -171,7 +180,7 @@ function render() {
     <div class="topbar">
       <span class="logo">THE <b>ROBOBOX</b></span>
       <nav class="topnav">${tabs.map((t) => `<button class="${t.id === active ? 'on' : ''}" onclick="go('${t.id}')">${t.label}</button>`).join('')}</nav>
-      <span class="who">${esc(u.name)}<small>${u.role === 'mod' ? 'Moderator' : u.role === 'ceo' ? 'CEO / Outsight' : 'Teacher'}</small></span>
+      <span class="who">${esc(u.name)}<small>${u.role === 'mod' ? 'Coordinator' : u.role === 'ceo' ? 'CEO / Outsight' : 'Teacher'}</small></span>
       <button class="out" onclick="logout()">Exit</button>
     </div>
     <div class="wrap"><div id="flash"></div>${VIEWS[u.role][active](u)}</div>
@@ -189,7 +198,7 @@ function viewLogin() {
       <div class="card">
         <button class="btn" onclick="pickRole('teacher')">👩‍🏫 I'm a Teacher</button>
         <div style="height:10px"></div>
-        <button class="btn sec" onclick="pickRole('mod')">🧭 I'm a Moderator</button>
+        <button class="btn sec" onclick="pickRole('mod')">🧭 I'm a Coordinator</button>
         <div style="height:10px"></div>
         <button class="btn sec" onclick="pickRole('ceo')">📊 CEO / Outsight team</button>
         <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--muted)">
@@ -212,7 +221,7 @@ function viewLogin() {
       </div></div>`;
     }
     if (LOGIN.role === 'mod') {
-        return `<div class="login"><div class="hero"><div class="robo">🧭</div><h1>Moderator sign in</h1></div>${BANNER}
+        return `<div class="login"><div class="hero"><div class="robo">🧭</div><h1>Coordinator sign in</h1></div>${BANNER}
       <div class="card"><label class="f">Your name</label>
         <select id="who">${STORE.get('moderators').map((m) => `<option>${esc(m)}</option>`).join('')}</select>
         <div style="height:12px"></div>
@@ -221,7 +230,7 @@ function viewLogin() {
       </div></div>`;
     }
     return `<div class="login"><div class="hero"><div class="robo">📊</div><h1>CEO / Outsight</h1></div>${BANNER}
-    <div class="card"><p class="sub">Network-wide view of teacher & moderator performance.</p>
+    <div class="card"><p class="sub">Network-wide view of teacher & coordinator performance.</p>
       <button class="btn" onclick="doLogin('ceo')">Enter dashboard</button>
       <button class="btn sec sm" style="margin-top:8px" onclick="backToRoles()">Back</button>
     </div></div>`;
@@ -310,8 +319,13 @@ function taskRow(x) {
 function markTask(id) { STORE.update('tasks', id, { status: 'Done', doneAt: new Date().toISOString() }); render(); }
 function tAttendance(u) {
     const recs = teacherAtt(u.name);
-    return `<h1>My attendance</h1><p class="sub">Expected start ${CONFIG.expectedStart} · avg late ${avgLate(u.name)} min</p>
-    <div class="card">${recs.length ? `<table class="mini"><tr><th>Date</th><th>In</th><th>Out</th><th>Late</th><th>School</th></tr>
+    return `<h1>My attendance</h1><p class="sub">Reporting time ${CONFIG.expectedStart} — delay is measured from here.</p>
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="stat"><div class="n">${avgLateWindow(u.name, 'week')}m</div><div class="l">Avg delay · this week</div></div>
+      <div class="stat"><div class="n">${avgLateWindow(u.name, 'month')}m</div><div class="l">Avg delay · this month</div></div>
+      <div class="stat"><div class="n">${avgLate(u.name)}m</div><div class="l">Avg delay · all time</div></div>
+    </div>
+    <div class="card scrollx">${recs.length ? `<table class="mini"><tr><th>Date</th><th>In</th><th>Out</th><th>Late</th><th>School</th></tr>
       ${recs.map((a) => `<tr><td>${fmtD(a.date)}</td><td>${fmtT(a.inTime)}</td><td>${fmtT(a.outTime)}</td><td>${a.inLate ? a.inLate + 'm' : '—'}</td>
         <td>${esc(STORE.school(a.inSchool).name)}${a.outSchool && a.outSchool !== a.inSchool ? ' → ' + esc(STORE.school(a.outSchool).name) : ''}</td></tr>`).join('')}</table>`
         : '<div class="empty">No attendance yet. Punch in from Home.</div>'}</div>`;
@@ -432,16 +446,58 @@ async function openFile(id) {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 /* ================= MODERATOR VIEWS ================= */
+let SEL = null; // coordinator's currently opened teacher (performance detail)
+function openTeacher(name) { SEL = name; render(); }
+function closeTeacher() { SEL = null; render(); }
 function mTeachers(u) {
     const ts = teachersOfMod(u.name);
-    return `<h1>My teachers</h1><p class="sub">${ts.length} teachers · ${schoolsOfMod(u.name).length} schools</p>
+    return `<h1>My teachers</h1><p class="sub">${ts.length} teachers · ${schoolsOfMod(u.name).length} schools · tap a teacher for their trend</p>
     <div class="card">${ts.map((t) => {
         const rag = teacherRag(t.name);
         const al = avgLate(t.name);
-        return `<div class="listrow"><div class="avatar">${initials(t.name)}</div>
+        return `<div class="listrow" style="cursor:pointer" onclick="openTeacher('${esc(t.name)}')"><div class="avatar">${initials(t.name)}</div>
         <div class="main"><b>${esc(t.name)}</b><small>${esc(schoolsOfTeacher(t).map((s) => s.name).join(', '))} · avg late ${al}m${rag.avg ? ' · score ' + rag.avg.toFixed(1) : ''}</small></div>
         ${ragPill(rag.key)}</div>`;
     }).join('')}</div>`;
+}
+// Performance trend for one teacher: every visit the coordinator logged, oldest→newest, with score deltas.
+function mTeacherDetail(name) {
+    var _a, _b;
+    const t = STORE.teacher(name);
+    const fb = teacherFeedback(name).slice().reverse(); // oldest first
+    const scored = fb.filter((f) => f.score != null);
+    const first = (_a = scored[0]) === null || _a === void 0 ? void 0 : _a.score;
+    const last = (_b = scored[scored.length - 1]) === null || _b === void 0 ? void 0 : _b.score;
+    const trend = (first != null && last != null && scored.length > 1)
+        ? (last > first + 0.1 ? '<span class="pill rag-green">Improving ↑</span>' : last < first - 0.1 ? '<span class="pill rag-red">Declining ↓</span>' : '<span class="pill tag">Steady →</span>')
+        : '<span class="pill tag">Needs more visits</span>';
+    let prev = null;
+    const rows = fb.map((f) => {
+        const s = f.score;
+        const delta = (s != null && prev != null) ? s - prev : null;
+        if (s != null)
+            prev = s;
+        const bar = s != null ? Math.round((s / 5) * 100) : 0;
+        const dstr = delta == null ? '' : delta > 0.05 ? `<span style="color:var(--green)">▲ ${delta.toFixed(1)}</span>` : delta < -0.05 ? `<span style="color:var(--red)">▼ ${Math.abs(delta).toFixed(1)}</span>` : '<span class="note">no change</span>';
+        return `<div class="q" style="padding:12px 0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><b>${fmtD(f.date)}</b> <span class="note">· ${esc(STORE.school(f.school).name)} · ${esc(f.judgement.action)}</span></div>
+        <div style="font-weight:800;white-space:nowrap">${s != null ? s.toFixed(1) : '—'} ${dstr}</div>
+        ${ragPill(f.rag)}
+      </div>
+      <div style="height:8px;border-radius:5px;background:#eee;margin-top:8px;overflow:hidden"><div style="height:100%;width:${bar}%;background:var(--${f.rag})"></div></div>
+    </div>`;
+    }).join('');
+    return `<button class="btn sec sm" onclick="closeTeacher()">← All teachers</button>
+    <h1 style="margin-top:12px">${esc(name)}</h1><p class="sub">${esc(schoolsOfTeacher(t).map((s) => s.name).join(', '))}</p>
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="stat"><div class="n" style="font-size:15px;padding-top:8px">${trend}</div><div class="l">Trend</div></div>
+      <div class="stat"><div class="n">${scored.length ? (scored.reduce((a, b) => a + b.score, 0) / scored.length).toFixed(1) : '—'}</div><div class="l">Avg score</div></div>
+      <div class="stat"><div class="n">${avgLateWindow(name, 'week')}m</div><div class="l">Delay · week</div></div>
+      <div class="stat"><div class="n">${avgLateWindow(name, 'month')}m</div><div class="l">Delay · month</div></div>
+    </div>
+    <h2>Visit history</h2>
+    <div class="card">${fb.length ? rows : '<div class="empty">No visits yet. Log a visit from the Visit tab.</div>'}</div>`;
 }
 function mVisit(u) {
     const schools = schoolsOfMod(u.name);
@@ -555,6 +611,10 @@ function submitVisit() {
     };
     fb.score = visitScore(fb);
     STORE.add('feedback', fb);
+    // Auto-complete a matching planned visit (same coordinator, school, today).
+    const plan = STORE.get('plans').find((p) => p.mod === u.name && p.school === fb.school && p.date === fb.date && p.status === 'Planned');
+    if (plan)
+        STORE.update('plans', plan.id, { status: 'Done' });
     VISIT = null;
     flash('ok', `Feedback saved${safety ? ' · ⚠ SAFETY concern flagged for escalation' : ''}.`);
     render();
@@ -588,12 +648,34 @@ function addTask() {
     render();
 }
 function mCalendar(u) {
+    const schools = schoolsOfMod(u.name);
+    const plans = STORE.get('plans').filter((p) => p.mod === u.name).sort((a, b) => a.date.localeCompare(b.date));
+    const upcoming = plans.filter((p) => p.status === 'Planned' && p.date >= todayStr());
+    const past = plans.filter((p) => p.status === 'Done' || p.date < todayStr());
     const visits = STORE.get('feedback').filter((f) => f.mod === u.name).sort((a, b) => b.date.localeCompare(a.date));
     const leaves = STORE.get('leaves').filter((l) => l.mod === u.name && l.status === 'Approved');
-    return `<h1>Calendar & visits</h1>
+    const planRow = (p, done) => `<div class="listrow"><div class="main"><b>${esc(STORE.school(p.school).name)}</b><small>${fmtD(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</small></div>
+    ${done ? `<span class="pill ${p.status === 'Done' ? 'rag-green' : 'tag'}">${p.status === 'Done' ? 'Done' : 'Missed'}</span>`
+        : `<button class="btn sec sm" onclick="donePlan('${p.id}')">Done</button><button class="btn sec sm" onclick="delPlan('${p.id}')">✕</button>`}</div>`;
+    return `<h1>Calendar</h1><p class="sub">Plan your school visits for the month.</p>
+    <div class="card"><h2 style="margin-top:0">Plan a visit</h2>
+      <label class="f">School</label><select id="plSchool">${schools.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+      <div class="row"><div style="flex:1"><label class="f">Date</label><input type="date" id="plDate" value="${todayStr()}" min="${todayStr()}"></div></div>
+      <label class="f">Note</label><input id="plNote" placeholder="Optional — e.g. observe Module 3">
+      <div style="height:10px"></div><button class="btn" onclick="addPlan()">Add to plan</button></div>
+    <h2>Planned (${upcoming.length})</h2><div class="card">${upcoming.length ? upcoming.map((p) => planRow(p, false)).join('') : '<div class="empty">No visits planned. Add one above.</div>'}</div>
+    ${past.length ? `<h2>Past plans</h2><div class="card">${past.map((p) => planRow(p, true)).join('')}</div>` : ''}
     <h2>Visit log</h2><div class="card">${visits.length ? visits.map(visitRow).join('') : '<div class="empty">No visits yet.</div>'}</div>
-    <h2>Upcoming approved leave</h2><div class="card">${leaves.length ? leaves.map((l) => `<div class="listrow"><div class="main"><b>${esc(l.teacher)}</b><small>${esc(l.type)}</small></div><span class="tag">${fmtD(l.from)}–${fmtD(l.to)}</span></div>`).join('') : '<div class="empty">None.</div>'}</div>`;
+    <h2>Approved leave</h2><div class="card">${leaves.length ? leaves.map((l) => `<div class="listrow"><div class="main"><b>${esc(l.teacher)}</b><small>${esc(l.type)}</small></div><span class="tag">${fmtD(l.from)}–${fmtD(l.to)}</span></div>`).join('') : '<div class="empty">None.</div>'}</div>`;
 }
+function addPlan() {
+    const u = SESSION.get();
+    STORE.add('plans', { mod: u.name, school: $('plSchool').value, date: $('plDate').value, note: $('plNote').value, status: 'Planned' });
+    flash('ok', 'Visit added to your plan.');
+    render();
+}
+function donePlan(id) { STORE.update('plans', id, { status: 'Done' }); render(); }
+function delPlan(id) { STORE.remove('plans', id); render(); }
 /* ================= CEO / OUTSIGHT VIEWS ================= */
 function ragCounts(teachers) {
     const c = { green: 0, amber: 0, red: 0, none: 0 };
@@ -610,7 +692,7 @@ function cOverview() {
     <div class="kpis">
       <div class="stat"><div class="n">${ts.length}</div><div class="l">Teachers</div></div>
       <div class="stat"><div class="n">${STORE.get('schools').length}</div><div class="l">Schools</div></div>
-      <div class="stat"><div class="n">${STORE.get('moderators').length}</div><div class="l">Moderators</div></div>
+      <div class="stat"><div class="n">${STORE.get('moderators').length}</div><div class="l">Coordinators</div></div>
       <div class="stat"><div class="n">${visits.length}</div><div class="l">Visits done</div></div>
     </div>
     <h2>Teacher RAG distribution</h2>
@@ -629,13 +711,13 @@ function cTeachers() {
     const ts = STORE.get('teachers').map((t) => ({ t, rag: teacherRag(t.name) }))
         .sort((a, b) => order[a.rag.key] - order[b.rag.key]);
     return `<h1>All teachers</h1><p class="sub">Sorted by risk (red first)</p>
-    <div class="card"><table class="mini"><tr><th>Teacher</th><th>Moderator</th><th>Visits</th><th>Score</th><th>RAG</th></tr>
+    <div class="card scrollx"><table class="mini"><tr><th>Teacher</th><th>Coordinator</th><th>Visits</th><th>Score</th><th>RAG</th></tr>
     ${ts.map(({ t, rag }) => `<tr><td><b>${esc(t.name)}</b></td><td>${esc(t.mod)}</td><td>${rag.visits}</td><td>${rag.avg ? rag.avg.toFixed(1) : '—'}</td><td>${ragPill(rag.key)}</td></tr>`).join('')}
     </table></div>`;
 }
 function cModerators() {
-    return `<h1>Moderator performance</h1>
-    <div class="card"><table class="mini"><tr><th>Moderator</th><th>Teachers</th><th>Schools</th><th>Visits</th><th>Avg score</th><th>Pending</th></tr>
+    return `<h1>Coordinator performance</h1>
+    <div class="card scrollx"><table class="mini"><tr><th>Coordinator</th><th>Teachers</th><th>Schools</th><th>Visits</th><th>Avg score</th><th>Pending</th></tr>
     ${STORE.get('moderators').map((m) => {
         const ts = teachersOfMod(m);
         const visits = STORE.get('feedback').filter((f) => f.mod === m);
@@ -659,12 +741,12 @@ const ROLE_TABS = {
     ],
     ceo: [
         { id: 'overview', label: 'Overview', ic: '📊' }, { id: 'teachers', label: 'Teachers', ic: '👥' },
-        { id: 'mods', label: 'Moderators', ic: '🧭' }, { id: 'mat', label: 'Materials', ic: '📚' },
+        { id: 'mods', label: 'Coordinators', ic: '🧭' }, { id: 'mat', label: 'Materials', ic: '📚' },
     ],
 };
 const VIEWS = {
     teacher: { home: tHome, att: tAttendance, leave: tLeave, req: tRequests, mat: materialsView },
-    mod: { teachers: mTeachers, visit: (u) => VISIT ? mForm() : mVisit(u), leaves: mLeaves, tasks: mTasks, cal: mCalendar, mat: materialsView },
+    mod: { teachers: (u) => SEL ? mTeacherDetail(SEL) : mTeachers(u), visit: (u) => VISIT ? mForm() : mVisit(u), leaves: mLeaves, tasks: mTasks, cal: mCalendar, mat: materialsView },
     ceo: { overview: cOverview, teachers: cTeachers, mods: cModerators, mat: materialsView },
 };
 render();

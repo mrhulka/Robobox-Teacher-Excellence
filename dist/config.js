@@ -3,7 +3,7 @@
 // Classic script: CONFIG is a global shared with the other scripts.
 const CONFIG = {
     geofenceMeters: 200,
-    expectedStart: '09:00', // ponytail: single global class-start time; make per-school if timings vary.
+    expectedStart: '08:00', // school reporting time; lateness is measured from here. Per-school if timings vary.
     grades: ['Grade 1-2', 'Grade 3-4', 'Grade 5-6', 'Grade 7-8', 'Grade 9-10', 'Mixed batch'],
     modules: ['Intro to Robotics', 'Electronics & Circuits', 'Coding Basics', 'Sensors & Automation', 'AI & ML Basics', 'Project Build'],
     ratingScale: [

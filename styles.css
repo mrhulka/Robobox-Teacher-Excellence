@@ -60,12 +60,14 @@ textarea{min-height:70px;resize:vertical}
 .dot.green{background:var(--green)}.dot.amber{background:var(--amber)}.dot.red{background:var(--red)}
 .tag{background:#eee;border-radius:6px;padding:2px 8px;font-size:12px;color:#444}
 
-/* ---- List rows ---- */
-.listrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+/* ---- List rows (wrap action buttons instead of overflowing) ---- */
+.listrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;row-gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
 .listrow:last-child{border-bottom:none}
-.listrow .main{flex:1;min-width:0}
-.listrow .main b{display:block}
-.listrow .main small{color:var(--muted)}
+.listrow .main{flex:1 1 55%;min-width:0;overflow-wrap:anywhere}
+.listrow .main b{display:block;overflow-wrap:anywhere}
+.listrow .main small{color:var(--muted);overflow-wrap:anywhere}
+.listrow .btn.sm{flex:none;white-space:nowrap}
+.listrow .pill{flex:none}
 .avatar{width:38px;height:38px;border-radius:50%;background:var(--yellow);color:var(--ink);display:grid;place-items:center;font-weight:800;flex:none}
 
 /* ---- Segmented tap input: one consistent control for every question ---- */
@@ -88,12 +90,11 @@ textarea{min-height:70px;resize:vertical}
 
 /* ---- Floating tab bar (iOS-style: translucent pill, centered, off the edge) ---- */
 .tabbar{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
-  display:flex;gap:2px;z-index:30;padding:6px;
+  display:flex;gap:1px;z-index:30;padding:5px;width:calc(100vw - 20px);max-width:460px;
   background:rgba(255,255,255,.72);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);
-  border:1px solid rgba(255,255,255,.6);border-radius:26px;box-shadow:0 10px 34px rgba(0,0,0,.16),0 2px 8px rgba(0,0,0,.08);
-  max-width:calc(100vw - 24px);overflow:auto;-webkit-overflow-scrolling:touch}
-.tabbar a{flex:0 0 auto;text-align:center;padding:7px 11px 6px;min-width:52px;font-size:10.5px;color:var(--muted);text-decoration:none;border-radius:19px;transition:transform .09s ease-out,background .15s,color .15s}
-.tabbar a .ic{font-size:20px;display:block;line-height:1.3}
+  border:1px solid rgba(255,255,255,.6);border-radius:24px;box-shadow:0 10px 34px rgba(0,0,0,.16),0 2px 8px rgba(0,0,0,.08)}
+.tabbar a{flex:1 1 0;min-width:0;text-align:center;padding:7px 2px 6px;font-size:9.5px;line-height:1.2;color:var(--muted);text-decoration:none;border-radius:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:transform .09s ease-out,background .15s,color .15s}
+.tabbar a .ic{font-size:19px;display:block;line-height:1.35}
 .tabbar a:active{transform:scale(.9)}
 .tabbar a.on{color:var(--ink);font-weight:700;background:var(--yellow)}
 
@@ -110,7 +111,8 @@ textarea{min-height:70px;resize:vertical}
 .note{font-size:12px;color:var(--muted)}
 .right{margin-left:auto}
 hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
-table.mini{width:100%;border-collapse:collapse;font-size:13px}
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.mini{width:100%;min-width:440px;border-collapse:collapse;font-size:13px}
 table.mini th,table.mini td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
 table.mini th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase}
 .topnav{display:none;gap:2px;margin-left:16px}
