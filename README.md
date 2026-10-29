@@ -29,12 +29,23 @@ view functions are globals, so the generated HTML's inline `on*` handlers resolv
 no module graph, no build tooling beyond `tsc`. Load order (set in `index.html`):
 `seed → config → store → app`.
 
-## Roles
-| Role | What they get |
-|------|---------------|
-| **Teacher** | Geofenced log in / log out (punch), attendance + avg-late dashboard, leave requests, component requisitions, tasks assigned to them, materials. Can log in at one school and out at another. |
-| **Coordinator** | Their teachers with live RAG, geofenced classroom visits → the full feedback form, leave/request approvals, performance trend, task assignment, monthly visit planner, materials. |
-| **CEO / Outsight** | Network overview, RAG distribution, actionables (amber/red + safety escalations), teacher leaderboard, coordinator performance. |
+## Roles & permissions
+| Role | What they get | Can see scores? |
+|------|---------------|-----------------|
+| **Teacher** | Geofenced check-in/out (can check in at one school, out at another), attendance with weekly/monthly delay from 08:00, leave applications, component requests by project, tasks, library. | **No** — teachers never see their own scores or RAG. |
+| **Coordinator** | Their teachers only: scores + trend + action plans, geofenced classroom visits → feedback form (action plan + next visit date required; the follow-up is added to their calendar), monthly calendar, teacher leave (read-only), component requests → Excel download + email to operations, library. | Their teachers' scores — **not** their own coordinator score. |
+| **Parth (CEO) / Manish** | Network overview, all teachers, coordinator scores, **leave approvals**, CSV reports, library. | Everything. |
+| **Outsight** | Network overview, all teachers, teacher CSV reports, library. | Teacher scores — not coordinator scores. |
+
+Leadership names and who is "top" (sees coordinator scores, approves leave) live in `CONFIG.leaders`.
+
+## Component requests
+Projects and their components come from `Robobox_Kits.xlsx` (sheet "ROBOBOX KIT") and live in
+`CONFIG.kits` — 4 live projects: CGA, CBT, RA, Robotics Kit. A teacher picks a project, sets
+quantities, and gets a reference (`REQ-yymmdd-NNN`) as acknowledgement. The coordinator downloads
+new requests as an Excel-compatible CSV (one row per component), emails operations (set
+`CONFIG.opsEmail` to pre-address it), and marks requests *Sent to Ops* → *Fulfilled*; the
+teacher sees each status change. To add a project, add it to `CONFIG.kits`.
 
 ## Geofence (200 m)
 Uses the browser's native Geolocation. A school's geofence centre is **captured on-site**
@@ -44,13 +55,18 @@ allowed only within `CONFIG.geofenceMeters` (200 m).
 
 ## Data
 Seeded from the uploaded School–Teacher sheet (29 schools, 61 teachers, 3 coordinators) and
-the Teacher Visit Feedback Form (20 ratings, 9 critical standards, RAG judgement).
+the Teacher Visit Feedback Form (20 ratings, 9 critical standards). RAG is auto-computed in
+`computeRag()` — the single place to tune thresholds.
 
 ## Known limitation → next step
 Persistence is **`localStorage`: single-device only.** For real cross-user sync (a teacher's
 phone and their coordinator's phone sharing data) and real passworded auth, swap `store.js` for
 a backend. Supabase is the laziest path — it gives Postgres + auth + row-level security with
 almost no server code; `src/store.ts` is written as the single swap point for exactly this.
+
+**Permissions are enforced in the UI only** while data lives on-device. When a backend is added,
+the same rules (teachers can't read scores; coordinators see only their teachers; only Parth/Manish
+see coordinator scores and approve leave) must be enforced server-side, e.g. Supabase row-level security.
 
 Material file uploads work on-device (IndexedDB, ≤20 MB); a real deployment points
 `fileSave`/`fileGet` at object storage (S3 / Supabase Storage). Also deferred (add when needed):

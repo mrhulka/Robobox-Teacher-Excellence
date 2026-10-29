@@ -54,5 +54,13 @@
     ok(cell('a,b') === '"a,b"', 'comma → quoted');
     ok(cell('he "hi"') === '"he ""hi"""', 'inner quotes doubled');
     ok(cell('a\nb') === '"a\nb"', 'newline → quoted');
+    // Leave coverage (kept in sync with app.ts leaveCovers): inclusive on both ends.
+    const covers = (from, to, d) => from <= d && d <= to;
+    ok(covers('2026-11-03', '2026-11-05', '2026-11-03'), 'leave covers first day');
+    ok(covers('2026-11-03', '2026-11-05', '2026-11-05'), 'leave covers last day');
+    ok(!covers('2026-11-03', '2026-11-05', '2026-11-06'), 'leave ends after last day');
+    // Local-date formatting (kept in sync with app.ts isoLocal): no UTC day shift.
+    const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    ok(isoLocal(new Date(2026, 9, 29, 0, 30)) === '2026-10-29', 'just after local midnight stays the same day');
     console.log('selfcheck OK');
 })();
