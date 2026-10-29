@@ -51,6 +51,11 @@ const ICONS = {
     up: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
     down: '<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>',
     search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+    flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+    pinI: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+    trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
     target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
 };
 const ic = (n, s = 20) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
@@ -120,12 +125,83 @@ function triggerDownload(blob, filename) {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
-// Report export → CSV (opens in Excel/Sheets). ponytail: CSV covers it; add .xlsx only if formatting is required.
-function csvCell(v) { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
-function downloadCSV(filename, rows) {
-    // BOM so Excel opens UTF-8 (e.g. "—") correctly.
-    const csv = '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
-    triggerDownload(new Blob([csv], { type: 'text/csv;charset=utf-8' }), filename);
+/* ---------- Excel export (.xlsx) ----------
+   A one-sheet workbook as SpreadsheetML inside an uncompressed ("stored") zip — no library.
+   Bold, tinted, frozen header row; columns sized to content; numeric strings become numbers. */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++)
+        c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+} return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++)
+    c = CRC_T[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files) {
+    const enc = new TextEncoder();
+    const out = [];
+    const dir = [];
+    let offset = 0, size = 0;
+    for (const [name, text] of files) {
+        const nb = enc.encode(name), data = enc.encode(text), crc = crc32(data);
+        const lh = new DataView(new ArrayBuffer(30)); // local file header
+        lh.setUint32(0, 0x04034b50, true);
+        lh.setUint16(4, 20, true);
+        lh.setUint16(6, 0x0800, true);
+        lh.setUint16(12, 0x21, true); // UTF-8 names, date 1980-01-01, method 0 (store)
+        lh.setUint32(14, crc, true);
+        lh.setUint32(18, data.length, true);
+        lh.setUint32(22, data.length, true);
+        lh.setUint16(26, nb.length, true);
+        const ch = new DataView(new ArrayBuffer(46)); // central directory entry
+        ch.setUint32(0, 0x02014b50, true);
+        ch.setUint16(4, 20, true);
+        ch.setUint16(6, 20, true);
+        ch.setUint16(8, 0x0800, true);
+        ch.setUint16(14, 0x21, true);
+        ch.setUint32(16, crc, true);
+        ch.setUint32(20, data.length, true);
+        ch.setUint32(24, data.length, true);
+        ch.setUint16(28, nb.length, true);
+        ch.setUint32(42, offset, true);
+        out.push(lh.buffer, nb, data);
+        dir.push(ch.buffer, nb);
+        offset += 30 + nb.length + data.length;
+        size += 46 + nb.length;
+    }
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, files.length, true);
+    end.setUint16(10, files.length, true);
+    end.setUint32(12, size, true);
+    end.setUint32(16, offset, true);
+    return new Blob([...out, ...dir, end.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+const xmlEsc = (s) => s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function colName(i) { let s = ''; for (i++; i; i = Math.floor((i - 1) / 26))
+    s = String.fromCharCode(65 + ((i - 1) % 26)) + s; return s; }
+function downloadXLSX(filename, rows, sheet = 'Sheet1') {
+    const X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    const NS = 'http://schemas.openxmlformats.org/', REL = NS + 'officeDocument/2006/relationships';
+    const widths = rows[0].map((_, c) => Math.min(60, Math.max(8, ...rows.map((r) => String(r[c] == null ? '' : r[c]).length + 2))));
+    const cell = (v, r, c) => {
+        if (v == null || v === '')
+            return '';
+        const ref = colName(c) + (r + 1), st = r === 0 ? ' s="1"' : '';
+        const n = typeof v === 'number' ? v : typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : NaN;
+        return isFinite(n) ? `<c r="${ref}"${st}><v>${n}</v></c>` : `<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${xmlEsc(String(v))}</t></is></c>`;
+    };
+    const ws = `${X}<worksheet xmlns="${NS}spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+        + `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>`
+        + `<sheetData>${rows.map((r, i) => `<row r="${i + 1}">${r.map((v, c) => cell(v, i, c)).join('')}</row>`).join('')}</sheetData></worksheet>`;
+    const name = xmlEsc(sheet.replace(/[\[\]:*?\/\\]/g, ' ').slice(0, 31));
+    triggerDownload(zipStore([
+        ['[Content_Types].xml', `${X}<Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+        ['_rels/.rels', `${X}<Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+        ['xl/workbook.xml', `${X}<workbook xmlns="${NS}spreadsheetml/2006/main" xmlns:r="${REL}"><sheets><sheet name="${name}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+        ['xl/_rels/workbook.xml.rels', `${X}<Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${REL}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${REL}/styles" Target="styles.xml"/></Relationships>`],
+        ['xl/styles.xml', `${X}<styleSheet xmlns="${NS}spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2C2"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+        ['xl/worksheets/sheet1.xml', ws],
+    ]), filename);
 }
 function haversine(a, b) {
     const R = 6371000, toR = (d) => d * Math.PI / 180;
@@ -272,20 +348,20 @@ const schoolName = (id) => { var _a; return (id && ((_a = STORE.school(id)) === 
 function tabsFor(u) {
     if (u.role === 'teacher')
         return [
-            { id: 'home', label: 'Home', icon: 'home' }, { id: 'att', label: 'Attendance', icon: 'clock' },
+            { id: 'home', label: 'Home', icon: 'home' }, { id: 'att', label: 'Attendance', icon: 'clock', short: 'Attend', at: 'xs' },
             { id: 'leave', label: 'Leave', icon: 'calx' }, { id: 'req', label: 'Requests', icon: 'package' },
-            { id: 'lib', label: 'Library', icon: 'book' },
+            { id: 'upd', label: 'Updates', icon: 'megaphone' },
         ];
     if (u.role === 'mod')
         return [
             { id: 'teachers', label: 'Teachers', icon: 'users' }, { id: 'visit', label: 'Visit', icon: 'pin' },
             { id: 'cal', label: 'Calendar', icon: 'calendar' }, { id: 'req', label: 'Requests', icon: 'package' },
-            { id: 'lib', label: 'Library', icon: 'book' },
+            { id: 'upd', label: 'Updates', icon: 'megaphone' },
         ];
     const t = [{ id: 'overview', label: 'Overview', icon: 'chart' }, { id: 'teachers', label: 'Teachers', icon: 'users' }];
     if (isTop(u))
-        t.push({ id: 'coords', label: 'Coordinators', icon: 'briefcase' }, { id: 'leave', label: 'Leave', icon: 'calx' });
-    t.push({ id: 'lib', label: 'Library', icon: 'book' });
+        t.push({ id: 'coords', label: 'Coordinators', icon: 'briefcase', short: 'Coords', at: 'sm' }, { id: 'leave', label: 'Leave', icon: 'calx' });
+    t.push({ id: 'upd', label: 'Updates', icon: 'megaphone' });
     return t;
 }
 const TAB = {};
@@ -320,18 +396,21 @@ function render() {
     }
     const tabs = tabsFor(u);
     const active = tabs.some((t) => t.id === TAB[u.role]) ? TAB[u.role] : tabs[0].id;
+    // Unread official updates → dot on the Updates tab (cleared once the Official section is opened).
+    const unread = active === 'upd' && UPD === 'official' ? 0 : unreadNotices(u);
+    const dot = (t) => t.id === 'upd' && unread ? `<span class="tab-dot" aria-hidden="true"></span><span class="sr-only">, ${unread} new</span>` : '';
     const roleLabel = u.role === 'mod' ? 'Coordinator' : u.role === 'teacher' ? 'Teacher' : (((_a = leaderOf(u.name)) === null || _a === void 0 ? void 0 : _a.title) || 'Leadership');
     app.innerHTML = `
     <header class="topbar">
       <img class="logo-img" src="assets/logo-mark.webp" width="75" height="28" alt="The Robobox">
-      <nav class="topnav" aria-label="Main">${tabs.map((t) => `<button class="${t.id === active ? 'on' : ''}" ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 18)}<span>${t.label}</span></button>`).join('')}</nav>
+      <nav class="topnav" aria-label="Main">${tabs.map((t) => `<button class="${t.id === active ? 'on' : ''}" ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 18)}<span>${t.label}</span>${dot(t)}</button>`).join('')}</nav>
       <div class="user-chip"><span class="avatar sm" aria-hidden="true">${initials(u.name)}</span><span class="who"><b>${esc(u.name)}</b><small>${esc(roleLabel)}</small></span></div>
       <button class="icon-btn" onclick="logout()" aria-label="Sign out" title="Sign out">${ic('logout')}</button>
     </header>
     <main class="wrap" id="main">${VIEWS[u.role + ':' + active](u)}</main>
-    <nav class="tabbar" aria-label="Main">${tabs.map((t) => `<button class="tab${t.id === active ? ' on' : ''}" ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 22)}<span>${t.label}</span></button>`).join('')}</nav>`;
+    <nav class="tabbar" aria-label="Main">${tabs.map((t) => `<button class="tab${t.id === active ? ' on' : ''}${t.short ? ' s-' + t.at : ''}" ${t.short ? `aria-label="${t.label}"` : ''} ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 22)}<span class="lbl">${t.label}</span>${t.short ? `<span class="lbl-s" aria-hidden="true">${t.short}</span>` : ''}${dot(t)}</button>`).join('')}</nav>`;
 }
-function logout() { SESSION.clear(); SEL = null; VISIT = null; const t = document.getElementById('toast'); if (t)
+function logout() { SESSION.clear(); SEL = null; VISIT = null; UPD = 'official'; const t = document.getElementById('toast'); if (t)
     t.innerHTML = ''; render(); }
 /* ================= LOGIN ================= */
 let LOGIN = { role: null };
@@ -432,6 +511,7 @@ function tHome(u) {
     const openReqs = STORE.get('requests').filter((r) => r.teacher === u.name && reqStatus(r) !== 'Fulfilled').length;
     const monthDays = teacherAtt(u.name).filter((a) => a.inTime && a.date.startsWith(todayStr().slice(0, 7))).length;
     return pageHead(`Hi, ${esc(cap(u.name.split(' ')[0].toLowerCase()))}`, fmtLong(todayStr())) +
+        (unreadNotices(u) ? `<button class="notice brand as-btn" onclick="openOfficial()">${ic('megaphone', 18)}<span><b>${unreadNotices(u)} new official update${unreadNotices(u) > 1 ? 's' : ''}</b> — tap to read</span></button>` : '') +
         (lv ? `<div class="notice info">${ic('calx', 18)}<span>You're on approved ${esc(lv.type.toLowerCase())} leave until ${fmtD(lv.to)}.</span></div>` : '') +
         `<section class="card checkin">
       <div class="checkin-status${open ? ' in' : ''}"><span class="status-dot" aria-hidden="true"></span><div>
@@ -450,6 +530,7 @@ function tHome(u) {
       ${kpi('Open tasks', tasks.length, 'clipboard')}
       ${kpi('Open requests', openReqs, 'package')}
     </div>
+    ${comingUp(u)}
     <h2 class="section-title">Tasks from your coordinator</h2>
     <div class="card list">${tasks.length ? tasks.map((x) => taskRow(x)).join('') : empty('clipboard', 'No open tasks', 'New tasks from your coordinator appear here.')}</div>`;
 }
@@ -600,11 +681,10 @@ function reqItem(r) {
     return `<div class="row-item"><span class="row-ic">${ic('package', 18)}</span><span class="row-main"><b>${esc(r.ref || 'Request')} · ${esc(((_a = kitOf(r.project)) === null || _a === void 0 ? void 0 : _a.id) || r.project)}</b>
     <small>${r.createdAt ? fmtD(r.createdAt) + ' · ' : ''}${esc(summary)}</small></span><span class="row-end">${badge(st, reqTone(st))}</span></div>`;
 }
-function libraryView(u) {
+function libraryInner(u) {
     const mats = STORE.get('materials').slice().reverse();
     const canAdd = u.role === 'mod' || u.role === 'ceo';
-    return pageHead('Library', 'Handbook, curriculum and resources from Robobox.') +
-        (canAdd ? `<section class="card"><h3 class="card-title">Add a resource</h3>
+    return (canAdd ? `<section class="card"><h3 class="card-title">Add a resource</h3>
       <label class="field-l" for="mtTitle">Title</label><input id="mtTitle" placeholder="e.g. Teacher Handbook v2">
       <label class="field-l" for="mtLink">Link</label><input id="mtLink" type="url" inputmode="url" placeholder="https://… (Drive, website)">
       <label class="field-l" for="mtFile">Or upload a file</label><input id="mtFile" type="file"><p class="hint">Up to 20 MB.</p>
@@ -650,13 +730,188 @@ async function addMaterial() {
     render();
 }
 async function openFile(id) {
-    var _a;
+    var _a, _b;
     const blob = await fileGet(id);
     if (!blob) {
         flash('err', 'File not found on this device.');
         return;
     }
-    triggerDownload(blob, ((_a = STORE.get('materials').find((m) => m.id === id)) === null || _a === void 0 ? void 0 : _a.fileName) || 'material');
+    triggerDownload(blob, ((_a = STORE.get('materials').find((m) => m.id === id)) === null || _a === void 0 ? void 0 : _a.fileName) || ((_b = STORE.get('notices').find((n) => n.fileId === id)) === null || _b === void 0 ? void 0 : _b.fileName) || 'file');
+}
+/* ================= UPDATES: official comms, holidays, school events, library ================= */
+let UPD = 'official';
+let PENDING_DEL = ''; // two-tap delete — avoids native confirm(), which sandboxed previews block
+const canComms = (u) => { var _a; return u.role === 'ceo' && !!((_a = leaderOf(u.name)) === null || _a === void 0 ? void 0 : _a.comms); };
+function setUpd(k) { UPD = k; PENDING_DEL = ''; render(); }
+function openOfficial() { UPD = 'official'; go('upd'); }
+const seenKey = (u) => `robobox_seen_${u.role}_${u.name}`;
+function unreadNotices(u) {
+    let seen = '';
+    try {
+        seen = localStorage.getItem(seenKey(u)) || '';
+    }
+    catch (e) { /* ignore */ }
+    return STORE.get('notices').filter((n) => n.createdAt > seen && n.by !== u.name).length;
+}
+function markSeen(u) { try {
+    localStorage.setItem(seenKey(u), new Date().toISOString());
+}
+catch (e) { /* ignore */ } }
+function armDel(id) { PENDING_DEL = id; render(); }
+const twoTap = (id, fn, label) => PENDING_DEL === id
+    ? `<button class="btn sm danger" onclick="${fn}">${ic('trash', 16)}Tap again to delete</button>`
+    : `<button class="icon-btn sm" aria-label="${label}" onclick="armDel('${id}')">${ic('trash', 18)}</button>`;
+const dateChip = (iso) => `<span class="date-chip" aria-hidden="true"><b>${parseD(iso).getDate()}</b><small>${parseD(iso).toLocaleDateString([], { month: 'short' })}</small></span>`;
+function updatesView(u) {
+    if (UPD === 'official')
+        markSeen(u);
+    const seg = (k, label, icon) => `<button role="tab" aria-selected="${UPD === k}" class="segtab${UPD === k ? ' on' : ''}" onclick="setUpd('${k}')">${ic(icon, 16)}${label}</button>`;
+    return pageHead('Updates', 'Official communications, holidays, school events and resources.') +
+        `<div class="segtabs" role="tablist" aria-label="Updates">${seg('official', 'Official', 'megaphone')}${seg('events', 'School events', 'flag')}${seg('library', 'Library', 'book')}</div>` +
+        (UPD === 'official' ? officialInner(u) : UPD === 'events' ? eventsInner(u) : libraryInner(u));
+}
+function officialInner(u) {
+    const can = canComms(u);
+    const today = todayStr();
+    const year = today.slice(0, 4);
+    const notices = STORE.get('notices').slice().sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt.localeCompare(a.createdAt));
+    const hols = STORE.get('holidays').filter((h) => h.date.slice(0, 4) >= year).sort((a, b) => a.date.localeCompare(b.date));
+    const next = hols.find((h) => h.date >= today);
+    return (can ? `<section class="card"><h3 class="card-title">Post an official update</h3>
+      <label class="field-l" for="ntTitle">Title</label><input id="ntTitle" placeholder="e.g. Revised reporting time from 1 December">
+      <label class="field-l" for="ntBody">Message</label><textarea id="ntBody" rows="4" placeholder="Goes to every teacher, coordinator and leadership member"></textarea>
+      <label class="field-l" for="ntFile">Attachment</label><input id="ntFile" type="file"><p class="hint">Optional · circular, PDF or image, up to 20 MB.</p>
+      <p class="err" id="ntFileErr" role="alert"></p>
+      <label class="switch-row tight"><input type="checkbox" id="ntPin"><span><b>Pin to top</b><small>Keeps it above newer updates</small></span></label>
+      <p class="err" id="ntTitleErr" role="alert"></p>
+      <button class="btn block" onclick="postNotice()">${ic('megaphone', 18)}Publish to everyone</button></section>` : '') +
+        `<h2 class="section-title">Official communications</h2>
+    ${notices.length ? notices.map((n) => `<article class="card notice-card${n.pinned ? ' pinned' : ''}">
+      <div class="nc-head"><span class="row-ic tile">${ic(n.pinned ? 'pinI' : 'megaphone', 18)}</span><span class="row-main"><b>${esc(n.title)}</b><small>${fmtD(n.createdAt)} · ${esc(n.by)}${n.pinned ? ' · Pinned' : ''}</small></span>
+        ${can ? `<span class="row-end"><button class="icon-btn sm" aria-label="${n.pinned ? 'Unpin' : 'Pin to top'}" aria-pressed="${!!n.pinned}" onclick="pinNotice('${n.id}')">${ic('pinI', 18)}</button>${twoTap(n.id, `delNotice('${n.id}')`, 'Delete update')}</span>` : ''}</div>
+      ${n.body ? `<p class="nc-body">${esc(n.body)}</p>` : ''}
+      ${n.fileId ? `<button class="btn ghost sm" onclick="openFile('${n.fileId}')">${ic('download', 16)}${esc(n.fileName)} · ${((n.fileSize || 0) / 1048576).toFixed(1)} MB</button>` : ''}
+    </article>`).join('') : `<div class="card">${empty('megaphone', 'No official updates yet', can ? 'Publish the first one above.' : 'Communications from Robobox appear here.')}</div>`}
+    <h2 class="section-title">Holidays ${year}</h2>
+    ${next ? `<div class="notice brand">${ic('sun', 18)}<span>Next holiday: <b>${esc(next.name)}</b> · ${fmtLong(next.date)}</span></div>` : ''}
+    ${can ? `<section class="card"><div class="grid2"><div><label class="field-l" for="hdDate">Date</label><input type="date" id="hdDate"></div>
+        <div><label class="field-l" for="hdName">Holiday</label><input id="hdName" placeholder="e.g. Diwali"></div></div>
+      <p class="err" id="hdNameErr" role="alert"></p>
+      <button class="btn ghost block" onclick="addHoliday()">${ic('plus', 18)}Add holiday</button></section>` : ''}
+    <div class="card list">${hols.length ? hols.map((h) => `<div class="row-item compact${h.date < today ? ' past' : ''}">${dateChip(h.date)}
+      <span class="row-main"><b>${esc(h.name)}</b><small>${parseD(h.date).toLocaleDateString([], { weekday: 'long', year: h.date.slice(0, 4) !== year ? 'numeric' : undefined })}</small></span>
+      ${can ? `<span class="row-end">${twoTap(h.id, `delHoliday('${h.id}')`, 'Remove holiday')}</span>` : ''}</div>`).join('')
+            : empty('sun', 'Holiday list not published yet', can ? 'Add each holiday above.' : 'Manish will publish the yearly holiday list here.')}</div>`;
+}
+async function postNotice() {
+    const u = SESSION.get();
+    if (!canComms(u))
+        return;
+    const title = $('ntTitle').value.trim();
+    if (!title) {
+        setErr('ntTitleErr', 'Add a title.');
+        return;
+    }
+    const fi = $('ntFile');
+    const file = fi.files && fi.files[0];
+    const n = { title, body: $('ntBody').value.trim(), by: u.name, createdAt: new Date().toISOString(), pinned: $('ntPin').checked };
+    if (file) {
+        if (file.size > MAX_FILE) {
+            setErr('ntFileErr', `That file is ${(file.size / 1048576).toFixed(1)} MB — the limit is 20 MB.`);
+            return;
+        }
+        n.fileId = 'ntc_file_' + Date.now();
+        n.fileName = file.name;
+        n.fileSize = file.size;
+        try {
+            await fileSave(n.fileId, file);
+        }
+        catch (e) {
+            flash('err', 'Could not store the attachment on this device.');
+            return;
+        }
+    }
+    STORE.add('notices', n);
+    markSeen(u);
+    flash('ok', 'Published to everyone.');
+    render();
+}
+function pinNotice(id) { const n = STORE.get('notices').find((x) => x.id === id); if (n)
+    STORE.update('notices', id, { pinned: !n.pinned }); render(); }
+function delNotice(id) { STORE.remove('notices', id); PENDING_DEL = ''; flash('ok', 'Update deleted.'); render(); }
+function addHoliday() {
+    const date = $('hdDate').value, name = $('hdName').value.trim();
+    if (!date || !name) {
+        setErr('hdNameErr', 'Add both the date and the holiday name.');
+        return;
+    }
+    STORE.add('holidays', { date, name });
+    flash('ok', `${name} added to the holiday list.`);
+    render();
+}
+function delHoliday(id) { STORE.remove('holidays', id); PENDING_DEL = ''; flash('ok', 'Holiday removed.'); render(); }
+/* ---- school events (teachers post; their coordinator and leadership see them) ---- */
+const evEnd = (e) => e.to || e.date;
+const eventOn = (e, iso) => e.date <= iso && iso <= evEnd(e);
+function eventsFor(u) {
+    const mine = u.role === 'teacher' ? STORE.teacher(u.name).schools : u.role === 'mod' ? schoolsOfMod(u.name).map((s) => s.id) : null; // null = all schools
+    return STORE.get('events').filter((e) => !mine || mine.includes(e.school));
+}
+const evTone = (t) => t === 'Exams' ? 'amber' : t === 'PTA meeting' ? 'blue' : t === 'Exhibition' ? 'brand' : t === 'School holiday' ? 'green' : 'neutral';
+function eventRow(u, e) {
+    const own = u.role === 'teacher' && e.teacher === u.name;
+    return `<div class="row-item${own ? ' wrap-end' : ''}${evEnd(e) < todayStr() ? ' past' : ''}" data-q="${esc((e.title + ' ' + e.type + ' ' + schoolName(e.school)).toLowerCase())}">${dateChip(e.date)}
+    <span class="row-main"><b>${esc(e.title || e.type)}</b><small>${esc(schoolName(e.school))} · ${fmtD(e.date)}${e.to && e.to !== e.date ? '–' + fmtD(e.to) : ''} · added by ${esc(e.teacher)}</small>${e.note ? `<small>${esc(e.note)}</small>` : ''}</span>
+    <span class="row-end">${badge(e.type, evTone(e.type))}${own ? twoTap(e.id, `delEvent('${e.id}')`, 'Delete event') : ''}</span></div>`;
+}
+function eventsInner(u) {
+    const today = todayStr();
+    const all = eventsFor(u);
+    const upcoming = all.filter((e) => evEnd(e) >= today).sort((a, b) => a.date.localeCompare(b.date));
+    const past = all.filter((e) => evEnd(e) < today).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
+    const t = u.role === 'teacher' ? STORE.teacher(u.name) : null;
+    return (t ? `<section class="card"><h3 class="card-title">Add a school event</h3>
+      <div class="grid2"><div><label class="field-l" for="evSchool">School</label><select id="evSchool">${schoolsOfTeacher(t).map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
+        <div><label class="field-l" for="evType">Type</label><select id="evType">${CONFIG.eventTypes.map((x) => `<option>${x}</option>`).join('')}</select></div></div>
+      <label class="field-l" for="evTitle">Title</label><input id="evTitle" placeholder="e.g. Annual science exhibition">
+      <div class="grid2"><div><label class="field-l" for="evDate">From</label><input type="date" id="evDate" value="${today}"></div>
+        <div><label class="field-l" for="evTo">To</label><input type="date" id="evTo"></div></div>
+      <p class="hint">Leave "To" empty for a one-day event.</p>
+      <label class="field-l" for="evNote">Details</label><textarea id="evNote" rows="2" placeholder="Optional — timings, classes affected, anything needed from Robobox"></textarea>
+      <p class="err" id="evToErr" role="alert"></p>
+      <button class="btn block" onclick="addEvent()">${ic('plus', 18)}Add event</button></section>` : '') +
+        `<h2 class="section-title">Upcoming${u.role === 'mod' ? ' at your schools' : t ? ` at your school${t.schools.length > 1 ? 's' : ''}` : ''}</h2>
+    ${u.role === 'ceo' && upcoming.length > 5 ? searchBox('evList', 'Search school or event') : ''}
+    <div class="card list" id="evList">${upcoming.length ? upcoming.map((e) => eventRow(u, e)).join('') : empty('flag', 'No upcoming school events', t ? 'Add exhibitions, PTAs, exams and other school dates above.' : 'Teachers add exhibitions, PTAs and exams here.')}</div>
+    ${past.length ? `<h2 class="section-title">Past</h2><div class="card list">${past.map((e) => eventRow(u, e)).join('')}</div>` : ''}`;
+}
+function addEvent() {
+    const u = SESSION.get();
+    const date = $('evDate').value, to = $('evTo').value;
+    if (!date) {
+        setErr('evToErr', 'Pick the event date.');
+        return;
+    }
+    if (to && to < date) {
+        setErr('evToErr', 'The end date must be on or after the start date.');
+        return;
+    }
+    const type = $('evType').value;
+    STORE.add('events', { school: $('evSchool').value, teacher: u.name, type, title: $('evTitle').value.trim() || type, date, to: to || undefined, note: $('evNote').value.trim(), createdAt: new Date().toISOString() });
+    flash('ok', 'Event added — your coordinator can see it.');
+    render();
+}
+function delEvent(id) { STORE.remove('events', id); PENDING_DEL = ''; flash('ok', 'Event deleted.'); render(); }
+// Teacher home: next company holiday + the next few events at their schools.
+function comingUp(u) {
+    const today = todayStr();
+    const hol = STORE.get('holidays').filter((h) => h.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const evs = eventsFor(u).filter((e) => evEnd(e) >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+    if (!hol && !evs.length)
+        return '';
+    return `<h2 class="section-title">Coming up</h2><div class="card list">
+    ${hol ? `<div class="row-item compact">${dateChip(hol.date)}<span class="row-main"><b>${esc(hol.name)}</b><small>Company holiday · ${parseD(hol.date).toLocaleDateString([], { weekday: 'long' })}</small></span><span class="row-end">${badge('Holiday', 'red')}</span></div>` : ''}
+    ${evs.map((e) => eventRow(u, e)).join('')}</div>`;
 }
 /* ================= COORDINATOR ================= */
 function mTeachers(u) {
@@ -745,7 +1000,9 @@ let VISIT = null;
 function mVisit(u) {
     const schools = schoolsOfMod(u.name);
     const todays = STORE.get('plans').filter((p) => p.mod === u.name && p.status === 'Planned' && p.date === todayStr());
+    const evToday = eventsFor(u).filter((e) => eventOn(e, todayStr()));
     return pageHead('Classroom visit', `Feedback unlocks only inside the school's ${CONFIG.geofenceMeters} m geofence.`) +
+        (evToday.length ? `<div class="notice info">${ic('flag', 18)}<span>Today at your schools: ${evToday.map((e) => `<b>${esc(e.title || e.type)}</b> at ${esc(schoolName(e.school))}`).join(', ')}</span></div>` : '') +
         (todays.length ? `<div class="notice brand">${ic('calendar', 18)}<span>Planned today: <b>${todays.map((p) => esc(schoolName(p.school))).join(', ')}</b></span></div>` : '') +
         `<section class="card">
       <label class="field-l" for="vSchool">School</label>
@@ -889,18 +1146,23 @@ function mCalendar(u) {
     const visits = STORE.get('feedback').filter((f) => f.mod === u.name);
     const names = teachersOfMod(u.name).map((t) => t.name);
     const leaves = STORE.get('leaves').filter((l) => names.includes(l.teacher) && l.status === 'Approved');
+    const events = eventsFor(u);
+    const hols = STORE.get('holidays');
     const cells = [];
     for (let i = 0; i < lead; i++)
         cells.push('<span class="cal-pad"></span>');
     for (let d = 1; d <= dim; d++) {
         const iso = isoLocal(new Date(y, m, d));
         const p = plans.some((x) => x.date === iso && x.status === 'Planned'), v = visits.some((x) => x.date === iso), l = leaves.some((x) => leaveCovers(x, iso));
-        cells.push(`<button class="cal-day${iso === today ? ' today' : ''}${iso === day ? ' sel' : ''}" onclick="calPick('${iso}')" aria-label="${fmtLong(iso)}${p ? ', visit planned' : ''}${v ? ', visited' : ''}${l ? ', teacher on leave' : ''}" ${iso === day ? 'aria-pressed="true"' : ''}>
-      <span>${d}</span><span class="cal-dots">${p ? '<i class="d-plan"></i>' : ''}${v ? '<i class="d-visit"></i>' : ''}${l ? '<i class="d-leave"></i>' : ''}</span></button>`);
+        const e = events.some((x) => eventOn(x, iso)), h = hols.some((x) => x.date === iso);
+        cells.push(`<button class="cal-day${iso === today ? ' today' : ''}${iso === day ? ' sel' : ''}" onclick="calPick('${iso}')" aria-label="${fmtLong(iso)}${p ? ', visit planned' : ''}${v ? ', visited' : ''}${l ? ', teacher on leave' : ''}${e ? ', school event' : ''}${h ? ', holiday' : ''}" ${iso === day ? 'aria-pressed="true"' : ''}>
+      <span>${d}</span><span class="cal-dots">${p ? '<i class="d-plan"></i>' : ''}${v ? '<i class="d-visit"></i>' : ''}${e ? '<i class="d-event"></i>' : ''}${h ? '<i class="d-hol"></i>' : ''}${l ? '<i class="d-leave"></i>' : ''}</span></button>`);
     }
     const dayPlans = plans.filter((p) => p.date === day);
     const dayVisits = visits.filter((f) => f.date === day);
     const dayLeaves = leaves.filter((l) => leaveCovers(l, day));
+    const dayEvents = events.filter((e) => eventOn(e, day));
+    const dayHols = hols.filter((h) => h.date === day);
     const upcoming = plans.filter((p) => p.status === 'Planned' && p.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
     const planRow = (p, showDate) => `<div class="row-item"><span class="row-ic">${ic(p.teacher ? 'target' : 'pin', 18)}</span>
     <span class="row-main"><b>${esc(schoolName(p.school))}</b><small>${showDate ? fmtLong(p.date) + (p.note ? ' · ' : '') : ''}${p.note ? esc(p.note) : ''}</small></span>
@@ -913,13 +1175,15 @@ function mCalendar(u) {
         <button class="icon-btn" aria-label="Next month" onclick="calNav(1)">${ic('chevR')}</button></div>
       <div class="cal-grid cal-wk">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((w) => `<span>${w}</span>`).join('')}</div>
       <div class="cal-grid">${cells.join('')}</div>
-      <div class="cal-legend"><span><i class="d-plan"></i>Planned</span><span><i class="d-visit"></i>Visited</span><span><i class="d-leave"></i>Teacher on leave</span></div>
+      <div class="cal-legend"><span><i class="d-plan"></i>Planned</span><span><i class="d-visit"></i>Visited</span><span><i class="d-event"></i>School event</span><span><i class="d-hol"></i>Holiday</span><span><i class="d-leave"></i>Teacher on leave</span></div>
     </section>
     <h2 class="section-title">${fmtLong(day)}</h2>
-    <div class="card list">${dayPlans.map((p) => planRow(p, false)).join('')}
+    <div class="card list">${dayHols.map((h) => `<div class="row-item"><span class="row-ic tile">${ic('sun', 18)}</span><span class="row-main"><b>${esc(h.name)}</b><small>Company holiday</small></span><span class="row-end">${badge('Holiday', 'red')}</span></div>`).join('')}
+      ${dayEvents.map((e) => eventRow(u, e)).join('')}
+      ${dayPlans.map((p) => planRow(p, false)).join('')}
       ${dayVisits.map(visitRow).join('')}
       ${dayLeaves.map((l) => `<div class="row-item"><span class="avatar">${initials(l.teacher)}</span><span class="row-main"><b>${esc(l.teacher)}</b><small>${esc(l.type)} leave · until ${fmtD(l.to)}</small></span><span class="row-end">${badge('On leave', 'amber')}</span></div>`).join('')}
-      ${dayPlans.length + dayVisits.length + dayLeaves.length ? '' : empty('calendar', 'Nothing on this day', day >= today ? 'Plan a visit below.' : '')}</div>
+      ${dayPlans.length + dayVisits.length + dayLeaves.length + dayEvents.length + dayHols.length ? '' : empty('calendar', 'Nothing on this day', day >= today ? 'Plan a visit below.' : '')}</div>
     <section class="card"><h3 class="card-title">Plan a visit</h3>
       <label class="field-l" for="plSchool">School</label><select id="plSchool">${schoolsOfMod(u.name).map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
       <div class="grid2"><div><label class="field-l" for="plDate">Date</label><input type="date" id="plDate" value="${day >= today ? day : today}" min="${today}"></div>
@@ -975,7 +1239,7 @@ function dlRequests() {
     }
     const rows = [['Ref', 'Date', 'Teacher', 'School', 'Coordinator', 'Project', 'Component', 'Quantity', 'Note']];
     reqs.forEach((r) => reqLines(r).forEach((l) => rows.push([r.ref || '', r.createdAt ? r.createdAt.slice(0, 10) : '', r.teacher, schoolName(r.school), u.name, kitLabel(r.project), l.component, l.qty, r.note])));
-    downloadCSV(`robobox-component-requests-${u.name}-${todayStr()}.csv`, rows);
+    downloadXLSX(`robobox-component-requests-${u.name}-${todayStr()}.xlsx`, rows, 'Component requests');
     flash('ok', `Downloaded ${reqs.length} request${reqs.length > 1 ? 's' : ''}. Attach it to your email to operations.`);
 }
 function emailOps() {
@@ -1068,7 +1332,7 @@ function cLeave(u) {
         `<div class="chips">${chip('Pending', 'Awaiting')}${chip('Approved', 'Approved')}${chip('Rejected', 'Rejected')}${chip('All', 'All')}</div>
     <div class="card list">${list.length ? list.map((l) => leaveItem(l, { who: true, decide: true })).join('') : empty('calx', LVF === 'Pending' ? 'No leave awaiting approval' : 'Nothing here')}</div>`;
 }
-/* ================= report downloads (CSV) ================= */
+/* ================= report downloads (.xlsx) ================= */
 function reportCoordTeachers(mod) {
     const rows = [['Teacher', 'Schools', 'Visits', 'Avg score', 'Latest RAG', 'Growth', 'Avg delay (min)', 'Latest action plan', 'Next visit']];
     teachersOfMod(mod).forEach((t) => {
@@ -1077,7 +1341,7 @@ function reportCoordTeachers(mod) {
         const last = teacherFeedback(t.name)[0];
         rows.push([t.name, schoolsOfTeacher(t).map((s) => s.name).join('; '), r.visits, r.avg != null ? r.avg.toFixed(2) : '', r.key === 'none' ? 'Unrated' : r.key, g != null ? g.toFixed(2) : '', avgLate(t.name), (last === null || last === void 0 ? void 0 : last.actionPlan) || '', (last === null || last === void 0 ? void 0 : last.nextVisit) || '']);
     });
-    downloadCSV(`robobox-${mod}-teachers-${todayStr()}.csv`, rows);
+    downloadXLSX(`robobox-${mod}-teachers-${todayStr()}.xlsx`, rows, 'Teachers');
 }
 function reportAllTeachers() {
     const rows = [['Teacher', 'Coordinator', 'Schools', 'Visits', 'Avg score', 'Latest RAG', 'Growth', 'Avg delay (min)']];
@@ -1086,7 +1350,7 @@ function reportAllTeachers() {
         const g = teacherGrowth(t.name);
         rows.push([t.name, t.mod, schoolsOfTeacher(t).map((s) => s.name).join('; '), r.visits, r.avg != null ? r.avg.toFixed(2) : '', r.key === 'none' ? 'Unrated' : r.key, g != null ? g.toFixed(2) : '', avgLate(t.name)]);
     });
-    downloadCSV(`robobox-all-teachers-${todayStr()}.csv`, rows);
+    downloadXLSX(`robobox-all-teachers-${todayStr()}.xlsx`, rows, 'Teachers');
 }
 function reportCoords() {
     if (!isTop(SESSION.get()))
@@ -1097,23 +1361,23 @@ function reportCoords() {
         const c = ragCounts(teachersOfMod(m));
         rows.push([m, teachersOfMod(m).length, schoolsOfMod(m).length, STORE.get('feedback').filter((f) => f.mod === m).length, sc != null ? sc.toFixed(2) : '', c.green, c.amber, c.red]);
     });
-    downloadCSV(`robobox-coordinators-${todayStr()}.csv`, rows);
+    downloadXLSX(`robobox-coordinators-${todayStr()}.xlsx`, rows, 'Coordinators');
 }
 function reportVisits() {
     const rows = [['Date', 'Coordinator', 'Teacher', 'School', 'Grade', 'Module', 'Students', 'Score', 'RAG', 'Improvement', 'Action', 'Action plan', 'Next visit']];
     STORE.get('feedback').slice().sort((a, b) => a.date.localeCompare(b.date)).forEach((f) => {
         rows.push([f.date, f.mod, f.teacher, schoolName(f.school), f.grade, f.module, f.students, f.score != null ? f.score.toFixed(2) : '', f.rag, f.judgement.improvement, f.judgement.action, f.actionPlan || '', f.nextVisit || '']);
     });
-    downloadCSV(`robobox-visits-${todayStr()}.csv`, rows);
+    downloadXLSX(`robobox-visits-${todayStr()}.xlsx`, rows, 'Visits');
 }
 /* ================= views ================= */
 // Keyed by role:tab. A tab only renders if tabsFor(u) offers it, so permission-gated
 // tabs (coords, leave) are unreachable for Outsight; the views also re-check.
 const VIEWS = {
-    'teacher:home': tHome, 'teacher:att': tAttendance, 'teacher:leave': tLeave, 'teacher:req': tRequests, 'teacher:lib': libraryView,
+    'teacher:home': tHome, 'teacher:att': tAttendance, 'teacher:leave': tLeave, 'teacher:req': tRequests, 'teacher:upd': updatesView,
     'mod:teachers': (u) => SEL ? teacherDetail(u, SEL) : mTeachers(u), 'mod:visit': (u) => VISIT ? mForm() : mVisit(u),
-    'mod:cal': mCalendar, 'mod:req': mRequests, 'mod:lib': libraryView,
+    'mod:cal': mCalendar, 'mod:req': mRequests, 'mod:upd': updatesView,
     'ceo:overview': cOverview, 'ceo:teachers': (u) => SEL ? teacherDetail(u, SEL) : cTeachers(u),
-    'ceo:coords': cCoords, 'ceo:leave': cLeave, 'ceo:lib': libraryView,
+    'ceo:coords': cCoords, 'ceo:leave': cLeave, 'ceo:upd': updatesView,
 };
 render();

@@ -7,7 +7,7 @@ const CONFIG = {
     opsEmail: '', // Operations team inbox for component requests — fill in to pre-address the email.
     leaders: [
         { name: 'Parth', title: 'CEO', top: true },
-        { name: 'Manish', title: 'Head, Teacher Network', top: true },
+        { name: 'Manish', title: 'Head, Teacher Network', top: true, comms: true },
         { name: 'Outsight', title: 'Outsight team', top: false },
     ],
     // Live project kits — from Robobox_Kits.xlsx, sheet 'ROBOBOX KIT'. [component, standard kit qty]
@@ -161,4 +161,5 @@ const CONFIG = {
     },
     rag: { green: 'Green — on track', amber: 'Amber — coaching/support needed', red: 'Red — urgent or repeated/significant concern' },
     leaveTypes: ['Casual', 'Sick', 'Earned', 'Unpaid'],
+    eventTypes: ['Exhibition', 'PTA meeting', 'Exams', 'Annual day', 'Sports day', 'School holiday', 'Workshop', 'Other'],
 };

@@ -46,12 +46,12 @@
   ok(rag({ A1: 5 }, { N1: 'No' }) === 'amber', 'one critical fail downgrades green→amber');
   ok(rag({ A1: 5 }, { N1: 'No', N2: 'No' }) === 'red', 'two critical fails → red');
 
-  // CSV cell escaping (kept in sync with app.ts csvCell).
-  const cell = (v: unknown) => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  ok(cell('abc') === 'abc', 'plain cell unquoted');
-  ok(cell('a,b') === '"a,b"', 'comma → quoted');
-  ok(cell('he "hi"') === '"he ""hi"""', 'inner quotes doubled');
-  ok(cell('a\nb') === '"a\nb"', 'newline → quoted');
+  // .xlsx writer pieces (kept in sync with app.ts crc32 / colName).
+  const T = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; T[n] = c >>> 0; }
+  const crc = (b: Uint8Array) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = T[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  ok(crc(new TextEncoder().encode('123456789')) === 0xCBF43926, 'CRC-32 check value');
+  const col = (i: number) => { let s = ''; for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s; return s; };
+  ok(col(0) === 'A' && col(25) === 'Z' && col(26) === 'AA' && col(27) === 'AB', 'Excel column letters');
 
   // Leave coverage (kept in sync with app.ts leaveCovers): inclusive on both ends.
   const covers = (from: string, to: string, d: string) => from <= d && d <= to;
