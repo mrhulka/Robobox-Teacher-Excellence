@@ -25,8 +25,10 @@ header('X-Content-Type-Options: nosniff');
 $DATA = getenv('ROBOBOX_DATA') ?: dirname(__DIR__) . '/robobox-data';
 const MAX_FILE = 20 * 1024 * 1024;
 const COLLS = ['schools', 'attendance', 'feedback', 'leaves', 'requests', 'tasks', 'materials', 'plans',
-  'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles'];
+  'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles', 'members', 'visitReasons'];
 const ROLES = ['teacher', 'mod', 'ceo', 'ops', 'hr'];
+// Leadership sign-ins — keep in step with CONFIG.leaders in src/config.ts.
+const LEADERS = ['Parth', 'Manish', 'Sajesh', 'Yash'];
 
 function out(int $code, $body): void { http_response_code($code); echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); exit; }
 function body(): array { $j = json_decode(file_get_contents('php://input') ?: '', true); return is_array($j) ? $j : []; }
@@ -67,16 +69,38 @@ function pwOk(string $key, string $name, string $pw): bool {
   return password_verify($pw, $pws[$key]);
 }
 
+// Only real people may sign in: the staff shipped in dist/seed.js, people added in the app, leadership, Operations, HR.
+function known(string $role, string $name): bool {
+  global $DATA; $n = mb_strtolower($name); $low = fn(array $xs) => array_map('mb_strtolower', $xs);
+  if ($role === 'ops') return $n === 'operations';
+  if ($role === 'hr') return $n === 'hr';
+  if ($role === 'ceo') return in_array($n, $low(LEADERS), true);
+  $src = (string) @file_get_contents(__DIR__ . '/dist/seed.js'); $i = strpos($src, '{'); $j = strrpos($src, '}');
+  $seed = ($i !== false && $j !== false) ? json_decode(substr($src, $i, $j - $i + 1), true) : null;
+  $names = $role === 'teacher' ? array_column($seed['teachers'] ?? [], 'name') : ($seed['moderators'] ?? []);
+  if (in_array($n, $low($names), true)) return true;
+  foreach (readJson("$DATA/state.json", ['data' => []])['data']['members'] ?? [] as $m)
+    if (empty($m['_del']) && ($m['role'] ?? '') === $role && mb_strtolower((string) ($m['name'] ?? '')) === $n) return true;
+  return false;
+}
+
 $a = $_GET['a'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($a === 'ping') out(200, ['ok' => true]);
 
+// Before signing in, a new phone needs the people added in the app for the name suggestions (name, role, schools only).
+if ($a === 'people') {
+  $ms = []; foreach (readJson("$DATA/state.json", ['data' => []])['data']['members'] ?? [] as $m)
+    if (empty($m['_del'])) $ms[] = ['id' => $m['id'], 'role' => $m['role'] ?? '', 'name' => $m['name'] ?? '', 'schools' => $m['schools'] ?? [], 'grades' => [], 'addedBy' => '', 'createdAt' => ''];
+  out(200, ['members' => $ms]);
+}
+
 if ($a === 'login' && $method === 'POST') {
   $b = body(); $role = (string) ($b['role'] ?? ''); $name = trim((string) ($b['name'] ?? '')); $pw = (string) ($b['password'] ?? '');
   if (!in_array($role, ROLES, true) || $name === '' || mb_strlen($name) > 80) out(400, ['error' => 'bad']);
-  // Slow down guessing: a failed attempt costs a second.
-  if (!pwOk($pwKey($role, $name), $name, $pw)) { sleep(1); out(401, ['error' => 'password']); }
+  // Slow down guessing: a failed attempt costs a second. Unknown people get the same answer as a wrong password.
+  if (!known($role, $name) || !pwOk($pwKey($role, $name), $name, $pw)) { sleep(1); out(401, ['error' => 'password']); }
   out(200, ['token' => token($role, $name)]);
 }
 

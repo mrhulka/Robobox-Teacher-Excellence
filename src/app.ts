@@ -74,23 +74,24 @@ const SESSION = {
 };
 const leaderOf = (name: string) => CONFIG.leaders.find((l) => l.name === name);
 // Parth & Manish: see coordinator scores and approve leave. Outsight: teacher scores only.
-const isTop = (u: User) => u.role === 'ceo' && !!leaderOf(u.name)?.top;
+const isTop = (u: User) => u.role === 'ceo' && !!leaderOf(u.name)?.top; // decides
+const seesAll = (u: User) => u.role === 'ceo' && !!(leaderOf(u.name)?.top || leaderOf(u.name)?.full); // sees what Parth sees
 
 /* ---------- demo mode (testing without GPS) ----------
    Default ON inside an iframe (e.g. a hosted preview that blocks GPS), OFF on a normal
    top-level page (real deployment). An explicit toggle choice always wins. */
+// Demo mode (simulated GPS) for testing without being at a school: open the site with ?demo=1 (?demo=0 to stop);
+// it is on automatically inside an embedded preview, where real GPS isn't available.
 const DEMO = { on: (() => {
   try {
+    const q = new URLSearchParams(location.search).get('demo');
+    if (q === '1' || q === '0') localStorage.setItem('robobox_demo', q);
     const stored = localStorage.getItem('robobox_demo');
     if (stored != null) return stored === '1';
     return window.self !== window.top;
   } catch (e) { return true; }
 })() };
 const DEMO_POS = { lat: 19.0760, lng: 72.8777, acc: 5 };
-function toggleDemo(cb: HTMLInputElement): void {
-  DEMO.on = cb.checked;
-  try { localStorage.setItem('robobox_demo', DEMO.on ? '1' : '0'); } catch (e) { /* ignore */ }
-}
 
 /* ---------- file storage (IndexedDB) for library uploads up to 20 MB ----------
    ponytail: per-device IndexedDB blob store — fine for the prototype; a real deployment
@@ -147,27 +148,30 @@ function zipStore(files: [string, string][]): Blob {
 }
 const xmlEsc = (s: string) => s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 function colName(i: number): string { let s = ''; for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s; return s; }
-function downloadXLSX(filename: string, rows: unknown[][], sheet = 'Sheet1'): void {
+function downloadXLSX(filename: string, rows: unknown[][], sheet = 'Sheet1'): void { downloadBook(filename, [[sheet, rows]]); }
+// One workbook, one sheet per [name, rows]; each sheet gets a bold, filled, frozen header row and fitted columns.
+function downloadBook(filename: string, sheets: [string, unknown[][]][]): void {
   const X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
   const NS = 'http://schemas.openxmlformats.org/', REL = NS + 'officeDocument/2006/relationships';
-  const widths = rows[0].map((_, c) => Math.min(60, Math.max(8, ...rows.map((r) => String(r[c] == null ? '' : r[c]).length + 2))));
   const cell = (v: unknown, r: number, c: number) => {
     if (v == null || v === '') return '';
     const ref = colName(c) + (r + 1), st = r === 0 ? ' s="1"' : '';
     const n = typeof v === 'number' ? v : typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : NaN;
     return isFinite(n) ? `<c r="${ref}"${st}><v>${n}</v></c>` : `<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${xmlEsc(String(v))}</t></is></c>`;
   };
-  const ws = `${X}<worksheet xmlns="${NS}spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+  const wsXml = (rows: unknown[][]) => { const widths = rows[0].map((_, c) => Math.min(60, Math.max(8, ...rows.map((r) => String(r[c] == null ? '' : r[c]).length + 2))));
+    return `${X}<worksheet xmlns="${NS}spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
     + `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>`
-    + `<sheetData>${rows.map((r, i) => `<row r="${i + 1}">${r.map((v, c) => cell(v, i, c)).join('')}</row>`).join('')}</sheetData></worksheet>`;
-  const name = xmlEsc(sheet.replace(/[\[\]:*?\/\\]/g, ' ').slice(0, 31));
+    + `<sheetData>${rows.map((r, i) => `<row r="${i + 1}">${r.map((v, c) => cell(v, i, c)).join('')}</row>`).join('')}</sheetData></worksheet>`; };
+  const nm = (n: string) => xmlEsc(n.replace(/[\[\]:*?\/\\]/g, ' ').slice(0, 31));
+  const ids = sheets.map((_, i) => i + 1);
   triggerDownload(zipStore([
-    ['[Content_Types].xml', `${X}<Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ['[Content_Types].xml', `${X}<Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${ids.map((i) => `<Override PartName="/xl/worksheets/sheet${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
     ['_rels/.rels', `${X}<Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
-    ['xl/workbook.xml', `${X}<workbook xmlns="${NS}spreadsheetml/2006/main" xmlns:r="${REL}"><sheets><sheet name="${name}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
-    ['xl/_rels/workbook.xml.rels', `${X}<Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${REL}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${REL}/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/workbook.xml', `${X}<workbook xmlns="${NS}spreadsheetml/2006/main" xmlns:r="${REL}"><sheets>${sheets.map(([n], i) => `<sheet name="${nm(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels', `${X}<Relationships xmlns="${NS}package/2006/relationships">${ids.map((i) => `<Relationship Id="rId${i}" Type="${REL}/worksheet" Target="worksheets/sheet${i}.xml"/>`).join('')}<Relationship Id="rIdS" Type="${REL}/styles" Target="styles.xml"/></Relationships>`],
     ['xl/styles.xml', `${X}<styleSheet xmlns="${NS}spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2C2"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
-    ['xl/worksheets/sheet1.xml', ws],
+    ...sheets.map(([, rows], i): [string, string] => [`xl/worksheets/sheet${i + 1}.xml`, wsXml(rows)]),
   ]), filename);
 }
 
@@ -362,6 +366,9 @@ function pageHead(title: string, sub = '', actions = ''): string {
 }
 const kpi = (label: string, value: string | number, icon: string, tone = '') =>
   `<div class="stat"><div class="stat-top"><span class="stat-ic ${tone}">${ic(icon, 16)}</span><span class="stat-l">${label}</span></div><div class="stat-n">${value}</div></div>`;
+// A KPI tile that opens something (Overview → Schools, Teachers…).
+const kpiBtn = (label: string, value: string | number, icon: string, fn: string) =>
+  `<button class="stat tap" onclick="${fn}"><div class="stat-top"><span class="stat-ic">${ic(icon, 16)}</span><span class="stat-l">${label}</span>${ic('chevR', 16)}</div><div class="stat-n">${value}</div></button>`;
 const empty = (icon: string, title: string, hint = '') => `<div class="empty">${ic(icon, 28)}<b>${title}</b>${hint ? `<span>${hint}</span>` : ''}</div>`;
 const backLink = (label: string, fn: string) => `<button class="back-link" onclick="${fn}">${ic('chevL', 18)}<span>${label}</span></button>`;
 function setErr(id: string, msg: string): void {
@@ -401,18 +408,18 @@ function tabsFor(u: User): Tab[] {
   if (u.role === 'ops') return [{ id: 'req', label: 'Requests', icon: 'package' }, { id: 'upd', label: 'Updates', icon: 'megaphone' }];
   if (u.role === 'hr') return [{ id: 'upd', label: 'Updates', icon: 'megaphone' }];
   const t: Tab[] = [{ id: 'overview', label: 'Overview', icon: 'chart' }, { id: 'teachers', label: 'Teachers', icon: 'users' }];
-  if (isTop(u)) t.push({ id: 'coords', label: 'Coordinators', icon: 'briefcase', short: 'Coords', at: 'sm' }, { id: 'leave', label: 'Leave', icon: 'calx' });
+  if (seesAll(u)) t.push({ id: 'coords', label: 'Coordinators', icon: 'briefcase', short: 'Coords', at: 'sm' }, { id: 'leave', label: 'Leave', icon: 'calx' });
   t.push({ id: 'upd', label: 'Updates', icon: 'megaphone' });
   return t;
 }
 const TAB: Partial<Record<Role, string>> = {};
 let SEL: string | null = null; // teacher detail opened by a coordinator or leadership
 function go(tab: string): void {
-  const u = SESSION.get()!; TAB[u.role] = tab; SEL = null; PROF = false; render(); entered();
+  const u = SESSION.get()!; TAB[u.role] = tab; SEL = null; PROF = false; SCH = ''; ADDM = false; render(); entered();
   (document.querySelector('h1') as HTMLElement | null)?.focus({ preventScroll: true });
 }
 function openTeacher(name: string): void {
-  const u = SESSION.get()!; if (u.role === 'ceo') TAB.ceo = 'teachers';
+  const u = SESSION.get()!; if (u.role === 'ceo' && !SCH) TAB.ceo = 'teachers'; // from a school page, stay there
   SEL = name; render(); entered();
 }
 // Page-enter motion only on navigation, not on every in-page re-render.
@@ -445,7 +452,7 @@ function render(): void {
     <main class="wrap" id="main">${gate || PROF ? profileView(u, gate) : VIEWS[u.role + ':' + active](u)}</main>
     ${gate ? '' : `<nav class="tabbar" aria-label="Main">${tabs.map((t) => `<button class="tab${t.id === active ? ' on' : ''}${t.short ? ' s-' + t.at : ''}" ${t.short ? `aria-label="${t.label}"` : ''} ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 22)}<span class="lbl">${t.label}</span>${t.short ? `<span class="lbl-s" aria-hidden="true">${t.short}</span>` : ''}${dot(t)}</button>`).join('')}</nav>`}`;
 }
-function logout(): void { SESSION.clear(); STORE.setToken(''); (Object.keys(TAB) as Role[]).forEach((k) => delete TAB[k]); SEL = null; PROF = false; PF_SELFIE = ''; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t) t.innerHTML = ''; render(); }
+function logout(): void { SESSION.clear(); STORE.setToken(''); (Object.keys(TAB) as Role[]).forEach((k) => delete TAB[k]); SEL = null; PROF = false; PF_SELFIE = ''; SCH = ''; ADDM = false; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t) t.innerHTML = ''; render(); }
 
 /* ================= LOGIN ================= */
 /* ================= SIGN IN: name (with suggestions) + password ================= */
@@ -485,8 +492,6 @@ function viewLogin(): string {
       <button class="btn block lg" type="submit">${ic('login', 18)}Sign in</button>
       <p class="hint center">First time? Your password is your name. Change it in your profile.</p>
     </form>
-    <label class="switch-row"><input type="checkbox" ${DEMO.on ? 'checked' : ''} onchange="toggleDemo(this)">
-      <span><b>Demo mode</b><small>Simulates location so you can test without GPS. Turn off on a real device.</small></span></label>
   </div>`;
 }
 function lgDraw(): void {
@@ -1475,8 +1480,8 @@ function mTeachers(u: User): string {
       ${away.map((l) => `<div class="row-item compact"><span class="avatar">${initials(l.teacher)}</span><span class="row-main"><b>${esc(l.teacher)}</b><small>${esc(l.type)} · ${fmtD(l.from)}${l.to !== l.from ? '–' + fmtD(l.to) : ''}</small></span><span class="row-end">${leaveCovers(l, today) ? badge('On leave today', 'amber') : badge('Upcoming', 'neutral')}</span></div>`).join('')}
       ${pending.length ? `<p class="hint">${pending.length} awaiting approval from Parth or Manish: ${pending.map((l) => esc(l.teacher)).join(', ')}.</p>` : ''}
     </section>` : '';
-  return pageHead('My teachers', `${ts.length} teachers · ${schoolsOfMod(u.name).length} schools`, `<button class="btn ghost sm" onclick="reportCoordTeachers('${esc(u.name)}')">${ic('download', 16)}Report</button>`) +
-    leaveCard + complianceCard(names) + progressCard(names) + eventsCard(u, 'School events · next 2 weeks') + birthdayCard(u, 30) + searchBox('tList', 'Search teachers') +
+  return pageHead('My teachers', `${ts.length} teachers · ${schoolsOfMod(u.name).length} schools`, `<button class="btn sm" onclick="openAddMember()">${ic('plus', 16)}Add teacher</button><button class="btn ghost sm" onclick="reportCoordTeachers('${esc(u.name)}')">${ic('download', 16)}Report</button>`) +
+    visitTargetCard(u) + leaveCard + complianceCard(names) + progressCard(names) + eventsCard(u, 'School events · next 2 weeks') + birthdayCard(u, 30) + searchBox('tList', 'Search teachers') +
     `<div class="card list" id="tList">${ts.map((t) => {
       const rag = teacherRag(t.name); const lv = leaveOn(t.name);
       return `<button class="row-item tap" data-q="${esc(t.name.toLowerCase())}" onclick="openTeacher('${esc(t.name)}')">${face('teacher', t.name)}
@@ -1516,7 +1521,7 @@ function perfInner(name: string): string {
 function teacherDetail(u: User, name: string): string {
   const t = STORE.teacher(name)!; const lv = leaveOn(name);
   const tasks = STORE.get('tasks').filter((x) => x.teacher === name).slice().reverse();
-  return backLink(u.role === 'mod' ? 'My teachers' : 'All teachers', 'closeTeacher()') +
+  return backLink(u.role === 'mod' ? 'My teachers' : SCH && SCH !== '*' ? schoolLabel(schoolName(SCH)) : 'All teachers', 'closeTeacher()') +
     pageHead(esc(name), esc(schoolsOfTeacher(t).map((s) => s.name).join(', ')) + (u.role === 'ceo' ? ` · Coordinator ${esc(t.mod)}` : '')) +
     (lv ? `<div class="notice info">${ic('calx', 18)}<span>On approved ${esc(lv.type.toLowerCase())} leave until ${fmtD(lv.to)}.</span></div>` : '') +
     perfInner(name) + (u.role === 'mod' || canSeeProfiles(u) ? profileBlock(name) : '') + progressCard([name]) + planHistory(name) +
@@ -1729,13 +1734,15 @@ function cOverview(u: User): string {
   const leaves = STORE.get('leaves'); const onLeave = leaves.filter((l) => l.status === 'Approved' && leaveCovers(l, today)); const pending = leaves.filter((l) => l.status === 'Pending');
   const seg = (k: RagOrNone, label: string) => c[k] ? `<span class="seg-${k}" style="width:${(c[k] / n) * 100}%" title="${label}: ${c[k]}"></span>` : '';
   return pageHead('Network overview', `All schools · ${fmtLong(today)}`) +
-    `<div class="kpis">${kpi('Teachers', ts.length, 'users')}${kpi('Schools', STORE.get('schools').length, 'home')}${kpi('Coordinators', STORE.get('moderators').length, 'briefcase')}${kpi('Visits · this month', month, 'pin')}</div>
+    `<div class="kpis">${kpiBtn('Teachers', ts.length, 'users', "go('teachers')")}${seesAll(u) ? kpiBtn('Coordinators', STORE.get('moderators').length, 'briefcase', "go('coords')") : kpi('Coordinators', STORE.get('moderators').length, 'briefcase')}
+      ${kpi('Present today', `${presentToday(ts.map((t) => t.name))}<small> / ${ts.length}</small>`, 'check')}${kpiBtn('Schools', STORE.get('schools').length, 'home', 'openSchools()')}</div>
     <h2 class="section-title">Teacher status</h2>
     <section class="card"><div class="stack" role="img" aria-label="Green ${c.green}, Amber ${c.amber}, Red ${c.red}, Not rated ${c.none}">${seg('green', 'Green')}${seg('amber', 'Amber')}${seg('red', 'Red')}${seg('none', 'Not rated')}</div>
       <div class="legend">${(['green', 'amber', 'red', 'none'] as RagOrNone[]).map((k) => `<span><i class="seg-${k}"></i><b>${c[k]}</b>${k === 'green' ? 'On track' : k === 'amber' ? 'Coaching needed' : k === 'red' ? 'Urgent' : 'Not rated'}</span>`).join('')}</div></section>
     ${safety.length ? `<div class="notice err">${ic('alert', 18)}<span><b>${safety.length} safety concern${safety.length > 1 ? 's' : ''} flagged</b> — escalate immediately.</span></div>` : ''}
-    ${isTop(u) ? `<section class="card split"><div>${kpi('On leave today', onLeave.length, 'calx')}</div><div>${kpi('Leave awaiting you', pending.length, 'clock', pending.length ? 'amber' : '')}</div>
-      ${pending.length ? `<button class="btn block" onclick="go('leave')">Review leave</button>` : ''}</section>` : ''}
+    ${seesAll(u) ? `<section class="card split"><div>${kpi('On leave today', onLeave.length, 'calx')}</div><div>${kpi(isTop(u) ? 'Leave awaiting you' : 'Leave awaiting approval', pending.length, 'clock', pending.length ? 'amber' : '')}</div>
+      ${pending.length ? `<button class="btn block${isTop(u) ? '' : ' ghost'}" onclick="go('leave')">${isTop(u) ? 'Review leave' : 'See leave'}</button>` : ''}</section>` : ''}
+    ${seesAll(u) ? coordVisitsCard() : ''}
     <h2 class="section-title">Operations · component requests</h2>${opsKpiCards()}
     ${eventsCard(u, 'School events · next 2 weeks')}
     ${canSeeProfiles(u) ? birthdayCard(u, 14) : ''}
@@ -1751,7 +1758,7 @@ function cTeachers(u: User): string {
   if (CTS === 'profiles' && canSeeProfiles(u)) return pageHead('Teachers', 'Profiles of every teacher and coordinator, and upcoming birthdays.', `<button class="btn ghost sm" onclick="reportProfiles()">${ic('download', 16)}Profiles</button>`) + tabs + profilesAdmin();
   if (CTS === 'plans') return pageHead('Teachers', 'Weekly lesson plans and who has updated their progress.') + tabs + plansAdmin(u);
   return pageHead('Teachers', 'Sorted by risk — red first. Tap a teacher for their trend.',
-    `<button class="btn ghost sm" onclick="reportAllTeachers()">${ic('download', 16)}Teachers</button><button class="btn ghost sm" onclick="reportVisits()">${ic('download', 16)}Visit log</button>`) +
+    `${isTop(u) ? `<button class="btn sm" onclick="openAddMember()">${ic('plus', 16)}Add member</button>` : ''}<button class="btn ghost sm" onclick="reportAllTeachers()">${ic('download', 16)}Teachers</button><button class="btn ghost sm" onclick="reportVisits()">${ic('download', 16)}Visit log</button>`) +
     tabs + searchBox('tTable', 'Search teacher or coordinator') +
     `<div class="card flush"><div class="table-wrap"><table class="tbl clickable"><thead><tr><th>Teacher</th><th>Coordinator</th><th class="num">Visits</th><th class="num">Score</th><th class="num">Growth</th><th>Status</th></tr></thead><tbody id="tTable">
     ${ts.map(({ t, rag }) => { const g = teacherGrowth(t.name); return `<tr tabindex="0" data-q="${esc((t.name + ' ' + t.mod).toLowerCase())}" onclick="openTeacher('${esc(t.name)}')" onkeydown="if(event.key==='Enter')openTeacher('${esc(t.name)}')">
@@ -1760,7 +1767,7 @@ function cTeachers(u: User): string {
     </tbody></table></div></div>`;
 }
 function cCoords(u: User): string {
-  if (!isTop(u)) return empty('shield', 'Not available', 'Coordinator scores are visible to Parth and Manish only.');
+  if (!seesAll(u)) return empty('shield', 'Not available', 'Coordinator scores are visible to leadership only.');
   const month = todayStr().slice(0, 7);
   return pageHead('Coordinators', "Score = average of their teachers' scores.", `<button class="btn ghost sm" onclick="reportCoords()">${ic('download', 16)}Coordinators</button>`) +
     `<div class="coord-grid">${STORE.get('moderators').map((m) => {
@@ -1768,21 +1775,186 @@ function cCoords(u: User): string {
       const upcoming = STORE.get('plans').filter((p) => p.mod === m && p.status === 'Planned' && p.date >= todayStr()).length;
       return `<section class="card coord"><div class="coord-head"><span class="avatar lg">${initials(m)}</span><span class="row-main"><b>${esc(m)}</b><small>${teachersOfMod(m).length} teachers · ${schoolsOfMod(m).length} schools</small></span>
         <span class="coord-score"><b>${sc != null ? sc.toFixed(1) : '—'}</b><small>score</small></span></div>
-        <div class="mini-stats"><span><b>${vs.length}</b>visits</span><span><b>${vs.filter((f) => f.date.startsWith(month)).length}</b>this month</span><span><b>${upcoming}</b>planned</span></div>
+        <div class="mini-stats"><span><b>${visitStats(m).done}/${visitStats(m).target}</b>schools visited</span><span><b>${vs.filter((f) => f.date.startsWith(month)).length}</b>visits this month</span><span><b>${upcoming}</b>planned ahead</span></div>
+        ${pctBar(visitStats(m).done, visitStats(m).target)}
         <div class="legend tight">${(['green', 'amber', 'red'] as RagOrNone[]).map((k) => `<span><i class="seg-${k}"></i><b>${c[k]}</b>${cap(k)}</span>`).join('')}</div></section>`;
     }).join('')}</div>
-    <h2 class="section-title">School locations · ${STORE.get('schools').filter((s) => s.lat != null).length}/${STORE.get('schools').length} set</h2>${schoolLocations(STORE.get('schools'))}`;
+    ${isTop(u) ? `<h2 class="section-title">School locations · ${STORE.get('schools').filter((s) => s.lat != null).length}/${STORE.get('schools').length} set</h2>${schoolLocations(STORE.get('schools'))}` : ''}`;
 }
 let LVF = 'Pending';
 function setLVF(k: string): void { LVF = k; render(); }
 function cLeave(u: User): string {
-  if (!isTop(u)) return empty('shield', 'Not available', 'Leave is approved by Parth and Manish only.');
+  if (!seesAll(u)) return empty('shield', 'Not available', 'Leave is approved by Parth and Manish only.');
   const all = STORE.get('leaves').slice().sort((a, b) => (a.status === 'Pending' ? 0 : 1) - (b.status === 'Pending' ? 0 : 1) || b.from.localeCompare(a.from));
   const list = LVF === 'All' ? all : all.filter((l) => l.status === LVF);
   const chip = (k: string, label: string) => `<button class="chip${LVF === k ? ' on' : ''}" aria-pressed="${LVF === k}" onclick="setLVF('${k}')">${label} <span>${k === 'All' ? all.length : all.filter((l) => l.status === k).length}</span></button>`;
   return pageHead('Leave approvals', 'Teachers and coordinators. Approved teacher leave is shown to their coordinator.') +
     `<div class="chips">${chip('Pending', 'Awaiting')}${chip('Approved', 'Approved')}${chip('Rejected', 'Rejected')}${chip('All', 'All')}</div>
-    <div class="card list">${list.length ? list.map((l) => leaveItem(l, { who: true, decide: true })).join('') : empty('calx', LVF === 'Pending' ? 'No leave awaiting approval' : 'Nothing here')}</div>`;
+    ${isTop(u) ? '' : `<div class="notice info">${ic('info', 18)}<span>View only — Parth or Manish approve leave.</span></div>`}
+    <div class="card list">${list.length ? list.map((l) => leaveItem(l, { who: true, decide: isTop(u) })).join('') : empty('calx', LVF === 'Pending' ? 'No leave awaiting approval' : 'Nothing here')}</div>`;
+}
+
+/* ================= MEMBERS: Parth/Manish add teachers and coordinators; a coordinator adds teachers ================= */
+const MEMBER_GRADES = ['Pre-primary', ...Array.from({ length: 10 }, (_, i) => `Grade ${i + 1}`), 'Grade 11-12'];
+let ADDM = false; let ADDM_ROLE: 'teacher' | 'mod' = 'teacher';
+function openAddMember(): void { ADDM = true; ADDM_ROLE = 'teacher'; SEL = null; render(); entered(); }
+function closeAddMember(): void { ADDM = false; PENDING_DEL = ''; render(); entered(); }
+function setAddRole(r: string): void { ADDM_ROLE = r === 'mod' ? 'mod' : 'teacher'; render(); }
+function memberForm(u: User): string {
+  const mine = u.role === 'mod'; const role = mine ? 'teacher' : ADDM_ROLE;
+  const schools = (mine ? schoolsOfMod(u.name) : STORE.get('schools')).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const pick = (name: string, value: string, label: string) => `<label class="pick"><input type="checkbox" name="${name}" value="${esc(value)}"><span>${esc(label)}</span></label>`;
+  const added = STORE.get('members').filter((m) => !mine || m.addedBy === u.name);
+  return backLink(mine ? 'My teachers' : 'Teachers', 'closeAddMember()') +
+    pageHead(mine ? 'Add a teacher' : 'Add a member', 'They sign in with the name you enter here. Their first password is the same name.') +
+    (mine ? '' : segTabs('Role', role, 'setAddRole', [['teacher', 'Teacher', 'cap'], ['mod', 'Coordinator', 'pin']])) +
+    `<section class="card">
+      <label class="field-l" for="amName">Name</label><input id="amName" autocomplete="off" autocapitalize="words" placeholder="e.g. Priya Sharma"><p class="err" id="amNameErr" role="alert"></p>
+      <label class="field-l" for="amPhone">Phone <span class="muted">(optional)</span></label><input id="amPhone" type="tel" inputmode="tel" autocomplete="off" placeholder="10-digit mobile">
+      <span class="field-l">${role === 'mod' ? 'Schools they coordinate <span class="muted">(optional — you can assign later)</span>' : 'School'}</span>
+      <div class="picks" id="amSchools">${schools.map((s) => pick('amSchool', s.id, schoolLabel(s.name) + (role === 'mod' && s.mod ? ` · now ${s.mod}` : ''))).join('')}</div><p class="err" id="amSchoolsErr" role="alert"></p>
+      ${role === 'teacher' ? `<span class="field-l">Grades they teach</span><div class="picks" id="amGrades">${MEMBER_GRADES.map((g) => pick('amGrade', g, g)).join('')}</div><p class="err" id="amGradesErr" role="alert"></p>` : ''}
+      <button class="btn block" onclick="saveMember()">${ic('plus', 18)}Add ${role === 'mod' ? 'coordinator' : 'teacher'}</button>
+    </section>
+    <h2 class="section-title">${mine ? 'Teachers you added' : 'Added in the app'}</h2>
+    <div class="card list">${added.length ? added.map((m) => `<div class="row-item wrap-end">${face(m.role, m.name)}<span class="row-main"><b>${esc(m.name)}</b><small>${m.role === 'mod' ? 'Coordinator' : 'Teacher'} · ${esc(m.role === 'mod' ? schoolsOfMod(m.name).map((s) => schoolLabel(s.name)).join(', ') || 'no schools yet' : m.schools.map((id) => schoolLabel(schoolName(id))).join(', '))}${m.grades.length ? ' · ' + esc(m.grades.join(', ')) : ''} · added by ${esc(m.addedBy)}</small></span><span class="row-end">${twoTap('mb' + m.id, `removeMember('${m.id}')`, 'Remove')}</span></div>`).join('')
+      : empty('users', 'No one added yet', 'People you add appear here and in every list straight away.')}</div>`;
+}
+function saveMember(): void {
+  const u = SESSION.get()!; const role: 'teacher' | 'mod' = u.role === 'mod' ? 'teacher' : ADDM_ROLE;
+  if (!(isTop(u) || (u.role === 'mod' && role === 'teacher'))) return;
+  const name = $('amName').value.trim().replace(/\s+/g, ' ');
+  const picked = (n: string) => Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="${n}"]:checked`)).map((x) => x.value);
+  const allowed = new Set((u.role === 'mod' ? schoolsOfMod(u.name) : STORE.get('schools')).map((s) => s.id));
+  const schools = picked('amSchool').filter((id) => allowed.has(id)), grades = picked('amGrade');
+  const taken = role === 'teacher' ? !!STORE.teacher(name) : STORE.get('moderators').some((m) => m.toLowerCase() === name.toLowerCase());
+  const reserved = CONFIG.leaders.some((l) => l.name.toLowerCase() === name.toLowerCase()) || /^(operations|hr)$/i.test(name);
+  const errs: [string, string][] = [
+    ['amNameErr', name.length < 2 ? 'Enter their name.' : name.length > 60 ? 'Keep the name under 60 characters.' : reserved ? 'That name is already a leadership or team sign-in.'
+      : taken ? `There's already a ${role === 'mod' ? 'coordinator' : 'teacher'} called ${name} — add their surname.` : ''],
+    ['amSchoolsErr', role === 'teacher' && !schools.length ? 'Pick their school.' : ''],
+    ['amGradesErr', role === 'teacher' && !grades.length ? 'Pick at least one grade.' : ''],
+  ];
+  errs.forEach(([id, m]) => setErr(id, m)); if (errs.some(([, m]) => m)) return;
+  STORE.add('members', { role, name, schools: role === 'mod' ? [] : schools, grades, phone: $('amPhone').value.trim() || undefined, addedBy: u.name, createdAt: new Date().toISOString() });
+  if (role === 'mod') schools.forEach((id) => STORE.update('schools', id, { mod: name })); // their schools (and those schools' teachers) move to them
+  flash('ok', `${name} added. They sign in as “${name}” with the password “${name.toLowerCase()}”.`); render();
+}
+function removeMember(id: string): void {
+  const m = STORE.get('members').find((x) => x.id === id); PENDING_DEL = '';
+  if (m && m.role === 'mod' && schoolsOfMod(m.name).length) { flash('err', `Give ${m.name}'s schools to another coordinator first (Overview → Schools).`); render(); return; }
+  STORE.remove('members', id); flash('ok', `${m ? m.name : 'Member'} removed. Their past records stay.`); render();
+}
+
+/* ================= SCHOOLS (leadership): all schools → one school → its teachers ================= */
+let SCH = ''; // '' = overview · '*' = all schools · otherwise a school id
+function openSchools(): void { SCH = '*'; SEL = null; render(); entered(); }
+function openSchool(id: string): void { SCH = id; SEL = null; render(); entered(); }
+function closeSchool(): void { SCH = SCH === '*' ? '' : '*'; render(); entered(); }
+const presentToday = (names: string[]) => names.filter((n) => teacherAtt(n).some((a) => a.date === todayStr() && !!a.inTime)).length;
+const monthName = (m: string) => parseD(m + '-01').toLocaleDateString([], { month: 'long', year: 'numeric' });
+const prevMonth = (m: string) => { const d = parseD(m + '-01'); d.setMonth(d.getMonth() - 1); return isoLocal(d).slice(0, 7); };
+const lastDayOf = (m: string) => isoLocal(new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0));
+// Target: one visit per school per month. "Done" = schools visited at least once that month.
+function visitStats(mod: string, month = todayStr().slice(0, 7)): { target: number; done: number; visits: number; planned: number; missing: School[] } {
+  const schools = schoolsOfMod(mod); const fb = STORE.get('feedback').filter((f) => f.mod === mod && f.date.startsWith(month));
+  const seen = new Set(fb.map((f) => f.school));
+  return { target: schools.length, done: schools.filter((s) => seen.has(s.id)).length, visits: fb.length,
+    planned: STORE.get('plans').filter((p) => p.mod === mod && p.date.startsWith(month)).length, missing: schools.filter((s) => !seen.has(s.id)) };
+}
+const reasonFor = (mod: string, month: string) => STORE.get('visitReasons').find((r) => r.mod === mod && r.month === month);
+const pctBar = (done: number, target: number) => `<div class="bar"><span style="width:${target ? Math.min(100, Math.round((100 * done) / target)) : 0}%;background:var(--${done >= target ? 'green' : 'brand'})"></span></div>`;
+function schoolsList(u: User): string {
+  const ss = STORE.get('schools').slice().sort((a, b) => a.name.localeCompare(b.name)); const month = todayStr().slice(0, 7);
+  return backLink('Overview', 'closeSchool()') +
+    pageHead('Schools', `${ss.length} schools · ${STORE.get('teachers').length} teachers · ${STORE.get('moderators').length} coordinators`,
+      seesAll(u) ? `<button class="btn ghost sm" onclick="reportSchools()">${ic('download', 16)}All schools (Excel)</button>` : '') +
+    searchBox('scList', 'Search school or coordinator') +
+    `<div class="card list" id="scList">${ss.map((s) => {
+      const visited = STORE.get('feedback').some((f) => f.school === s.id && f.date.startsWith(month));
+      return `<button class="row-item tap" data-q="${esc((s.name + ' ' + s.mod).toLowerCase())}" onclick="openSchool('${s.id}')"><span class="row-ic">${ic('home', 18)}</span>
+        <span class="row-main"><b>${esc(schoolLabel(s.name))}</b><small>${esc(s.mod)} · ${plural(s.teachers.length, 'teacher')} · ${presentToday(s.teachers)} present today</small></span>
+        <span class="row-end">${visited ? badge('Visited', 'green') : badge('Not visited', 'neutral')}${ic('chevR', 18)}</span></button>`;
+    }).join('')}</div>`;
+}
+function schoolDetail(u: User, id: string): string {
+  const s = STORE.school(id); if (!s) { SCH = '*'; return schoolsList(u); }
+  const ts = teachersAtSchool(id); const names = ts.map((t) => t.name); const month = todayStr().slice(0, 7);
+  const vs = STORE.get('feedback').filter((f) => f.school === id).sort((a, b) => b.date.localeCompare(a.date));
+  return backLink('All schools', 'closeSchool()') + pageHead(esc(schoolLabel(s.name)), `Coordinator ${esc(s.mod)} · ${plural(ts.length, 'teacher')}`) +
+    `<div class="kpis">${kpi('Teachers', ts.length, 'users')}${kpi('Present today', `${presentToday(names)}/${ts.length}`, 'check')}${kpi('Visits · this month', vs.filter((f) => f.date.startsWith(month)).length, 'pin')}${kpi('Last visit', vs[0] ? fmtD(vs[0].date) : '—', 'calendar')}</div>` +
+    (isTop(u) ? `<section class="card"><label class="field-l" for="scMod" style="margin-top:0">Coordinator for this school</label><select id="scMod" onchange="setSchoolCoord('${id}', this.value)">${STORE.get('moderators').map((m) => `<option${m === s.mod ? ' selected' : ''}>${esc(m)}</option>`).join('')}</select></section>` : '') +
+    progressCard(names, todayStr(), 'Lesson plan progress') +
+    `<h2 class="section-title">Teachers</h2><div class="card list">${ts.length ? ts.map((t) => {
+      const rag = teacherRag(t.name); const today = teacherAtt(t.name).find((a) => a.date === todayStr() && a.inTime); const lv = leaveOn(t.name);
+      return `<button class="row-item tap" onclick="openTeacher('${esc(t.name)}')">${face('teacher', t.name)}
+        <span class="row-main"><b>${esc(profileOf('teacher', t.name)?.fullName || t.name)}</b><small>${today ? `In at ${fmtT(today.inTime)}${today.inLate ? ` · ${today.inLate} min late` : ' · on time'}` : lv ? 'On leave today' : 'Not checked in'} · avg late ${avgLate(t.name)} min${t.grades && t.grades.length ? ' · ' + esc(t.grades.join(', ')) : ''}</small></span>
+        <span class="row-end">${overdueWeeks(t.name).length ? badge('Plan not updated', 'red') : ''}${rag.avg != null ? `<span class="score">${rag.avg.toFixed(1)}</span>` : ''}${ragPill(rag.key)}${ic('chevR', 18)}</span></button>`;
+    }).join('') : empty('users', 'No teachers at this school yet')}</div>`;
+}
+function setSchoolCoord(id: string, mod: string): void {
+  if (!isTop(SESSION.get()!)) return;
+  STORE.update('schools', id, { mod }); flash('ok', `${schoolLabel(schoolName(id))} now belongs to ${mod}, with its teachers.`); render();
+}
+// Leadership: each coordinator's visits this month against the target, and last month's reason if it was missed.
+function coordVisitsCard(): string {
+  const month = todayStr().slice(0, 7), prev = prevMonth(month);
+  return `<h2 class="section-title">Coordinator visits · ${monthName(month)}</h2><section class="card">${STORE.get('moderators').map((m) => {
+    const v = visitStats(m); const pv = visitStats(m, prev); const r = reasonFor(m, prev);
+    const missedLast = prev >= CONFIG.visitsFrom && (r ? r.done < r.target : pv.done < pv.target);
+    return `<div class="prog"><div class="prog-top"><b>${esc(m)}</b><span>${v.done}/${v.target} schools · ${plural(v.visits, 'visit')} · ${v.planned} planned</span></div>${pctBar(v.done, v.target)}
+      ${missedLast ? `<p class="hint">${monthName(prev)}: ${r ? `${r.done}/${r.target} — reason: ${esc(r.reason)}` : `${pv.done}/${pv.target} — <b>no reason given yet</b>`}</p>` : ''}</div>`;
+  }).join('') || empty('briefcase', 'No coordinators yet')}</section>`;
+}
+// Coordinator: this month's visits; on the last day, or when last month fell short, a reason is required.
+function visitTargetCard(u: User): string {
+  const month = todayStr().slice(0, 7), prev = prevMonth(month); const v = visitStats(u.name); const pv = visitStats(u.name, prev);
+  if (!v.target && !pv.target) return '';
+  const ask = (m: string, st: { done: number; target: number }) => `<label class="field-l" for="vrReason">Why weren't all your schools visited in ${monthName(m)}?</label>
+    <textarea id="vrReason" rows="3" placeholder="e.g. Exams at two schools; both rescheduled to the first week"></textarea><p class="err" id="vrReasonErr" role="alert"></p>
+    <button class="btn block" onclick="saveVisitReason('${m}', ${st.done}, ${st.target})">${ic('send', 18)}Submit reason</button>`;
+  const prevDue = prev >= CONFIG.visitsFrom && pv.target > 0 && pv.done < pv.target && !reasonFor(u.name, prev);
+  const nowDue = todayStr() === lastDayOf(month) && v.done < v.target && !reasonFor(u.name, month);
+  return (prevDue ? `<div class="notice err">${ic('alert', 18)}<span><b>${monthName(prev)}: ${pv.done} of ${pv.target} schools visited.</b> Please add the reason below.</span></div>` : '') +
+    `<section class="card"><div class="card-head"><b>${ic('pin', 18)} School visits · ${monthName(month)}</b><span class="muted">${v.done}/${v.target} schools</span></div>${pctBar(v.done, v.target)}
+      <p class="hint">${v.done >= v.target ? 'Every school visited this month.' : `Still to visit: ${v.missing.map((s) => esc(schoolLabel(s.name))).join(', ')}.`} Target: one visit per school each month.</p>
+      ${prevDue ? ask(prev, pv) : nowDue ? `<p class="hint"><b>It's the last day of the month</b> and ${v.target - v.done} school${v.target - v.done === 1 ? ' is' : 's are'} still unvisited.</p>` + ask(month, v) : ''}</section>`;
+}
+function saveVisitReason(month: string, done: number, target: number): void {
+  const u = SESSION.get()!; const reason = $('vrReason').value.trim();
+  if (reason.length < 10) { setErr('vrReasonErr', 'Add a short reason — a few words is enough.'); $('vrReason').focus(); return; }
+  STORE.add('visitReasons', { id: `vr_${u.name}_${month}`.replace(/[^A-Za-z0-9_-]/g, '_'), mod: u.name, month, done, target, reason, at: new Date().toISOString() });
+  flash('ok', 'Reason saved — leadership can see it.'); render();
+}
+
+/* ================= All-schools workbook (leadership) ================= */
+function reportSchools(): void {
+  if (!seesAll(SESSION.get()!)) return;
+  const today = todayStr(), month = today.slice(0, 7), pm = prevMonth(month);
+  const avgIn = (name: string) => { // average check-in clock time
+    const mins = teacherAtt(name).filter((a) => a.inTime).map((a) => { const d = new Date(a.inTime); return d.getHours() * 60 + d.getMinutes(); });
+    if (!mins.length) return ''; const m = Math.round(mins.reduce((a, b) => a + b, 0) / mins.length);
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  };
+  const leaveDays = (name: string) => { let n = 0; for (let d = month + '-01'; d <= lastDayOf(month); d = addDays(d, 1)) if (leaveOn(name, d)) n++; return n; };
+  const schools = STORE.get('schools').slice().sort((a, b) => a.name.localeCompare(b.name));
+  const sRows: unknown[][] = [['School', 'Coordinator', 'Teachers', 'Teacher names', 'Present today', 'Visits this month', 'Last visit', 'Geofence set']];
+  schools.forEach((s) => { const vs = STORE.get('feedback').filter((f) => f.school === s.id).map((f) => f.date).sort();
+    sRows.push([s.name, s.mod, s.teachers.length, s.teachers.join(', '), presentToday(s.teachers), vs.filter((d) => d.startsWith(month)).length, vs[vs.length - 1] || '', s.lat != null ? 'Yes' : 'No']); });
+  const tRows: unknown[][] = [['School', 'Coordinator', 'Teacher', 'Full name', 'Grades', 'Education', 'Location', 'Lesson sessions to date', 'Done', 'Partly done', 'Not done', 'Not updated', '% done',
+    'Avg score', 'Latest RAG', 'Growth', 'Visits', 'Reporting time', 'Avg check-in time', 'Avg late (min)', 'Avg late this month (min)', 'Days present this month', 'Leave days this month', 'Open component requests']];
+  schools.forEach((s) => s.teachers.forEach((n) => {
+    const t = STORE.teacher(n); if (!t || t.schools[0] !== s.id) return; // one row per teacher, under their first school
+    const p = planProgress([n], '0000-01-01', today); const tot = p.done + p.partly + p.not + p.pending; const r = teacherRag(n); const g = teacherGrowth(n); const pf = profileOf('teacher', n);
+    tRows.push([t.schools.map((id) => schoolName(id)).join(', '), t.mod, n, pf?.fullName || '', (t.grades || []).join(', '), pf?.education || '', pf?.location || '',
+      tot, p.done, p.partly, p.not, p.pending, tot ? Math.round((100 * p.done) / tot) : '', r.avg != null ? r.avg.toFixed(2) : '', r.key === 'none' ? 'Unrated' : r.key, g != null ? g.toFixed(2) : '', r.visits,
+      CONFIG.expectedStart, avgIn(n), avgLate(n), avgLateWindow(n, 'month'), teacherAtt(n).filter((a) => a.inTime && a.date.startsWith(month)).length, leaveDays(n),
+      STORE.get('requests').filter((q) => q.teacher === n && reqStatus(q) !== 'Fulfilled').length]);
+  }));
+  const cRows: unknown[][] = [['Coordinator', 'Schools', 'Teachers', 'Coordinator score', 'Schools visited this month', 'Visit target', 'Visits this month', 'Visits planned this month', `Visited in ${monthName(pm)}`, `Reason (${monthName(pm)})`]];
+  STORE.get('moderators').forEach((m) => { const v = visitStats(m); const pv = visitStats(m, pm); const sc = coordScore(m);
+    cRows.push([m, schoolsOfMod(m).map((s) => s.name).join(', '), teachersOfMod(m).length, sc != null ? sc.toFixed(2) : '', v.done, v.target, v.visits, v.planned, `${pv.done} of ${pv.target}`, reasonFor(m, pm)?.reason || '']); });
+  downloadBook(`robobox-all-schools-${today}.xlsx`, [['Schools', sRows], ['Teachers', tRows], ['Coordinators', cRows]]);
 }
 
 /* ================= report downloads (.xlsx) ================= */
@@ -1803,7 +1975,7 @@ function reportAllTeachers(): void {
   downloadXLSX(`robobox-all-teachers-${todayStr()}.xlsx`, rows, 'Teachers');
 }
 function reportCoords(): void {
-  if (!isTop(SESSION.get()!)) return;
+  if (!seesAll(SESSION.get()!)) return;
   const rows: unknown[][] = [['Coordinator', 'Teachers', 'Schools', 'Visits', 'Coordinator score', 'Green', 'Amber', 'Red']];
   STORE.get('moderators').forEach((m) => {
     const sc = coordScore(m); const c = ragCounts(teachersOfMod(m));
@@ -1824,9 +1996,10 @@ function reportVisits(): void { // every visit, dated — pivot in Excel for gro
 // tabs (coords, leave) are unreachable for Outsight; the views also re-check.
 const VIEWS: Record<string, (u: User) => string> = {
   'teacher:home': tHome, 'teacher:lessons': tLessons, 'teacher:att': tAttendance, 'teacher:req': tRequests, 'teacher:upd': updatesView,
-  'mod:teachers': (u) => SEL ? teacherDetail(u, SEL) : mTeachers(u), 'mod:visit': (u) => VISIT ? mForm() : mVisit(u),
+  'mod:teachers': (u) => ADDM ? memberForm(u) : SEL ? teacherDetail(u, SEL) : mTeachers(u), 'mod:visit': (u) => VISIT ? mForm() : mVisit(u),
   'mod:cal': mCalendar, 'mod:leave': mLeave, 'mod:upd': updatesView,
-  'ceo:overview': cOverview, 'ceo:teachers': (u) => SEL ? teacherDetail(u, SEL) : cTeachers(u),
+  'ceo:overview': (u) => SEL ? teacherDetail(u, SEL) : SCH === '*' ? schoolsList(u) : SCH ? schoolDetail(u, SCH) : cOverview(u),
+  'ceo:teachers': (u) => ADDM && isTop(u) ? memberForm(u) : SEL ? teacherDetail(u, SEL) : cTeachers(u),
   'ceo:coords': cCoords, 'ceo:leave': cLeave, 'ceo:upd': updatesView,
   'ops:req': opsRequests, 'ops:upd': updatesView, 'hr:upd': updatesView,
 };

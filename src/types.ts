@@ -6,7 +6,7 @@ type RagKey = 'green' | 'amber' | 'red';
 type RagOrNone = RagKey | 'none';
 
 interface School { id: string; name: string; mod: string; mapLink: string; locNote: string; lat: number | null; lng: number | null; teachers: string[]; }
-interface Teacher { name: string; mod: string; schools: string[]; }
+interface Teacher { name: string; mod: string; schools: string[]; grades?: string[]; phone?: string; added?: boolean; }
 interface SeedData { moderators: string[]; schools: School[]; teachers: Teacher[]; lessons: LessonPlan[]; profileHints: Record<string, { education?: string; location?: string }>; }
 
 interface User { role: Role; name: string; mod?: string; token?: string; } // token: signed by api.php on the hosted site
@@ -41,6 +41,10 @@ interface PlanUpdate { id?: string; teacher: string; week: string; grade: string
 // My profile — compulsory for teachers and coordinators (keyed by role + login name).
 interface Profile { id?: string; role: Role; name: string; fullName: string; education: string; birthday: string; location: string; updatedAt: string; selfie?: string; } // selfie = 320 px JPEG data URL
 // Changed passwords only (default = the person's name). key = role:name, hash = salted SHA-256.
+// People added in the app (by Parth/Manish, or a coordinator for teachers). Merged with the seeded staff by STORE.
+interface Member { id?: string; role: 'teacher' | 'mod'; name: string; schools: string[]; grades: string[]; phone?: string; addedBy: string; createdAt: string; }
+// A coordinator's reason for visiting fewer schools than their monthly target (1 visit per school per month).
+interface VisitReason { id?: string; mod: string; month: string; done: number; target: number; reason: string; at: string; }
 interface Password { id?: string; key: string; hash: string; }
 interface VisitPlan { id?: string; mod: string; school: string; date: string; note?: string; teacher?: string; status: 'Planned' | 'Done'; }
 
@@ -50,11 +54,13 @@ interface Collections {
   attendance: Attendance[]; feedback: Feedback[]; leaves: Leave[];
   requests: Requisition[]; tasks: Task[]; materials: Material[]; plans: VisitPlan[];
   notices: Notice[]; holidays: Holiday[]; events: SchoolEvent[];
-  lessons: LessonPlan[]; planUpdates: PlanUpdate[]; profiles: Profile[]; passwords: Password[];
+  lessons: LessonPlan[]; planUpdates: PlanUpdate[]; profiles: Profile[]; passwords: Password[]; members: Member[]; visitReasons: VisitReason[];
 }
 
 interface Kit { id: string; name: string; items: [string, number | string][]; } // [component, standard kit qty]
-interface Leader { name: string; title: string; top: boolean; profiles?: boolean; } // profiles = sees every profile + birthdays, downloads the repository // top = sees coordinator scores, approves leave, loads lesson plans
+// top = decides (approves leave, loads lesson plans, adds coordinators, moves school pins); full = sees everything Parth sees;
+// profiles = sees every profile + birthdays and the repository download.
+interface Leader { name: string; title: string; top: boolean; full?: boolean; profiles?: boolean; } // top = sees coordinator scores, approves leave, loads lesson plans
 
 interface AppConfig {
   geofenceMeters: number;
@@ -62,6 +68,7 @@ interface AppConfig {
   opsSlaDays: number;
   workDays: number[];
   ayStart: string;
+  visitsFrom: string;
   leaders: Leader[];
   kits: Kit[];
   grades: string[];

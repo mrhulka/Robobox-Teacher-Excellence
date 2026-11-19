@@ -2,13 +2,13 @@
 const STORE = (() => {
     const K = 'robobox_tep_v1', KS = 'robobox_tep_sync';
     const SYNCED = ['schools', 'attendance', 'feedback', 'leaves', 'requests', 'tasks', 'materials', 'plans',
-        'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles'];
+        'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles', 'members', 'visitReasons'];
     function seedDb() {
         const copy = (x) => JSON.parse(JSON.stringify(x));
         return {
             schools: copy(SEED.schools), teachers: SEED.teachers, moderators: SEED.moderators,
             attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
-            notices: [], holidays: [], events: [], lessons: copy(SEED.lessons), planUpdates: [], profiles: [], passwords: [],
+            notices: [], holidays: [], events: [], lessons: copy(SEED.lessons), planUpdates: [], profiles: [], passwords: [], members: [], visitReasons: [],
         };
     }
     function load() {
@@ -41,8 +41,20 @@ const STORE = (() => {
         });
         return d;
     }
-    let db = load();
-    function save() { try {
+    // Staff = the seeded teachers/coordinators plus anyone added in the app. A teacher's coordinator is their
+    // first school's coordinator, so giving a school to a new coordinator moves its teachers with it.
+    function compose(d) {
+        const added = d.members || [];
+        d.teachers = [...SEED.teachers.map((t) => ({ ...t })),
+            ...added.filter((m) => m.role === 'teacher').map((m) => ({ name: m.name, mod: '', schools: m.schools, grades: m.grades, phone: m.phone, added: true }))];
+        d.teachers.forEach((t) => { const s = d.schools.find((x) => x.id === t.schools[0]); if (s)
+            t.mod = s.mod; });
+        d.moderators = [...SEED.moderators, ...added.filter((m) => m.role === 'mod' && !SEED.moderators.some((x) => x.toLowerCase() === m.name.toLowerCase())).map((m) => m.name)];
+        d.schools.forEach((s) => { s.teachers = d.teachers.filter((t) => t.schools.includes(s.id)).map((t) => t.name); });
+        return d;
+    }
+    let db = compose(load());
+    function save() { compose(db); try {
         localStorage.setItem(K, JSON.stringify(db));
     }
     catch (e) { /* ignore */ } }
@@ -178,7 +190,7 @@ const STORE = (() => {
                 queue({ coll: 'schools', op: 'patch', id, rec: { lat, lng } });
             }
         },
-        reset() { db = seedDb(); save(); },
+        reset() { db = compose(withIds(seedDb())); save(); },
         // ---- shared mode ----
         get shared() { return S.shared; },
         // Is there a server? Switching into shared mode starts this phone from the seed plus the server's changes,
@@ -194,11 +206,18 @@ const STORE = (() => {
             const j = r.ok ? await r.json().catch(() => null) : null;
             if (j && j.ok) {
                 if (!S.shared) {
-                    db = withIds(seedDb());
+                    db = compose(withIds(seedDb()));
                     save();
                     S = { shared: true, v: 0, outbox: [] };
                     saveSync();
                 }
+                // People added in the app, so a phone that has never signed in can still find its owner's name.
+                try {
+                    const pr = await fetch('api.php?a=people', { cache: 'no-store' });
+                    if (pr.ok)
+                        apply({ members: (await pr.json()).members || [] });
+                }
+                catch (e) { /* offline */ }
                 return true;
             }
             if (S.shared) {

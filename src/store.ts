@@ -12,14 +12,14 @@ type SyncOp = { coll: string; op: 'put' | 'patch' | 'del'; id: string; rec?: unk
 const STORE = (() => {
   const K = 'robobox_tep_v1', KS = 'robobox_tep_sync';
   const SYNCED: (keyof Collections)[] = ['schools', 'attendance', 'feedback', 'leaves', 'requests', 'tasks', 'materials', 'plans',
-    'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles'];
+    'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles', 'members', 'visitReasons'];
 
   function seedDb(): Collections {
     const copy = <T>(x: T): T => JSON.parse(JSON.stringify(x));
     return {
       schools: copy(SEED.schools), teachers: SEED.teachers, moderators: SEED.moderators,
       attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
-      notices: [], holidays: [], events: [], lessons: copy(SEED.lessons), planUpdates: [], profiles: [], passwords: [],
+      notices: [], holidays: [], events: [], lessons: copy(SEED.lessons), planUpdates: [], profiles: [], passwords: [], members: [], visitReasons: [],
     };
   }
   function load(): Collections {
@@ -45,8 +45,19 @@ const STORE = (() => {
     return d;
   }
 
-  let db = load();
-  function save(): void { try { localStorage.setItem(K, JSON.stringify(db)); } catch (e) { /* ignore */ } }
+  // Staff = the seeded teachers/coordinators plus anyone added in the app. A teacher's coordinator is their
+  // first school's coordinator, so giving a school to a new coordinator moves its teachers with it.
+  function compose(d: Collections): Collections {
+    const added = d.members || [];
+    d.teachers = [...SEED.teachers.map((t) => ({ ...t })),
+      ...added.filter((m) => m.role === 'teacher').map((m): Teacher => ({ name: m.name, mod: '', schools: m.schools, grades: m.grades, phone: m.phone, added: true }))];
+    d.teachers.forEach((t) => { const s = d.schools.find((x) => x.id === t.schools[0]); if (s) t.mod = s.mod; });
+    d.moderators = [...SEED.moderators, ...added.filter((m) => m.role === 'mod' && !SEED.moderators.some((x) => x.toLowerCase() === m.name.toLowerCase())).map((m) => m.name)];
+    d.schools.forEach((s) => { s.teachers = d.teachers.filter((t) => t.schools.includes(s.id)).map((t) => t.name); });
+    return d;
+  }
+  let db = compose(load());
+  function save(): void { compose(db); try { localStorage.setItem(K, JSON.stringify(db)); } catch (e) { /* ignore */ } }
 
   // ---- sync state: server mode, last version pulled, changes not yet sent ----
   let S: { shared: boolean; v: number; outbox: SyncOp[] } = { shared: false, v: 0, outbox: [] };
@@ -122,7 +133,7 @@ const STORE = (() => {
     setSchoolLoc(id: string, lat: number, lng: number): void {
       const s = this.school(id); if (s) { s.lat = lat; s.lng = lng; save(); queue({ coll: 'schools', op: 'patch', id, rec: { lat, lng } }); }
     },
-    reset(): void { db = seedDb(); save(); },
+    reset(): void { db = compose(withIds(seedDb())); save(); },
 
     // ---- shared mode ----
     get shared(): boolean { return S.shared; },
@@ -132,7 +143,12 @@ const STORE = (() => {
       let r: Response;
       try { r = await fetch('api.php?a=ping', { cache: 'no-store' }); } catch (e) { return S.shared; } // offline: stay as we were, keep the queue
       const j = r.ok ? await r.json().catch(() => null) : null;
-      if (j && j.ok) { if (!S.shared) { db = withIds(seedDb()); save(); S = { shared: true, v: 0, outbox: [] }; saveSync(); } return true; }
+      if (j && j.ok) {
+        if (!S.shared) { db = compose(withIds(seedDb())); save(); S = { shared: true, v: 0, outbox: [] }; saveSync(); }
+        // People added in the app, so a phone that has never signed in can still find its owner's name.
+        try { const pr = await fetch('api.php?a=people', { cache: 'no-store' }); if (pr.ok) apply({ members: (await pr.json()).members || [] }); } catch (e) { /* offline */ }
+        return true;
+      }
       if (S.shared) { S = { shared: false, v: 0, outbox: [] }; saveSync(); } // a server answered, but not ours: local copy
       return false;
     },

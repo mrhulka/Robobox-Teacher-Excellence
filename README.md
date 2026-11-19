@@ -48,11 +48,31 @@ and the same motion curve and keyframes (`rb-rise`, `rb-pop`, `rb-shake`…). It
 | **Teacher** | Geofenced check-in/out (100 m; can check in at one school, out at another), weekly **lesson plans** with progress updates, attendance calendar (present / late / absent / leave / holiday) + leave, component requests with delivery tracking, school events, updates. | **No** |
 | **Coordinator** | Their teachers only: scores, trend, action plans, lesson-plan compliance; geofenced visits → feedback form (action plan + next visit required, follow-up added to the calendar); calendar; **own leave** + their teachers' leave (view only); school events on the dashboard; updates. | Their teachers' — not their own |
 | **Parth (CEO) / Manish** | Overview (incl. Operations KPI and school events), all teachers, coordinator scores, **leave approvals for teachers and coordinators**, lesson-plan loading (Excel upload), reports. **Parth only:** the profile repository + birthday calendar (*Teachers → Profiles*, Excel download). | Everything |
-| **Outsight** | Overview, all teachers, reports, updates. | Teacher scores only |
+| **Sajesh / Yash (Outsight team)** | Everything Parth sees — overview, schools, teachers, profiles, coordinators, leave, reports and downloads — but **no decisions**: no leave approval, lesson-plan loading, adding coordinators or moving school pins. | Everything |
 | **Operations** | All component requests: confirm an expected date (the teacher sees it), mark fulfilled, Excel export, fulfilment KPI. | No |
 | **HR** | Publishes official updates, the holiday list and the library (handbook). | No |
 
-Leadership names, who is "top" and who sees profiles (`profiles: true`, Parth) live in `CONFIG.leaders`. Operations and HR are one shared sign-in each.
+Leadership lives in `CONFIG.leaders`: `top` = decides (Parth, Manish), `full` = sees everything, `profiles` = the profile repository (Parth, Sajesh, Yash). The same names are listed in `LEADERS` in `api.php` — keep the two in step. Operations and HR are one shared sign-in each.
+
+## Adding people
+**Parth / Manish** (Teachers → *Add member*) add a **teacher** (name, school, grades, phone) or a **coordinator**
+(name, the schools they take over — those schools' teachers move with them). A **coordinator** (My teachers →
+*Add teacher*) adds teachers to their own schools only. New people appear everywhere at once, including the
+sign-in suggestions on any phone; they sign in with their name, and their first password is that name.
+A teacher's coordinator is always their school's coordinator; leadership can change a school's coordinator on
+its school page. Only real people can sign in — the server checks the name against the staff list.
+
+## Schools, attendance and coordinator visits
+- Overview → **Schools** (tap the tile): every school with its coordinator, teachers and who's present today →
+  a school: present today, visits, lesson-plan progress, each teacher's check-in, average lateness and score.
+- Overview shows teachers, coordinators, **present today** (teachers checked in at school) and each coordinator's
+  **visits this month** against the target of **one visit per school per month**.
+- Coordinators see their own target on *My teachers*. On the month's last day, if schools are still unvisited,
+  they must give a reason; a month that ended short keeps asking until they do. Leadership sees the reasons.
+  Tracking starts in `CONFIG.visitsFrom` (November 2026).
+- **All schools (Excel)** on the Schools page: one workbook with *Schools*, *Teachers* (lesson-plan progress,
+  scores, reporting time, average check-in time, average lateness, days present, leave) and *Coordinators*
+  (visits vs target, last month's reason).
 
 ## Signing in
 One screen: **Name** and **Password**. Typing a name lists everyone who matches (login name or profile full

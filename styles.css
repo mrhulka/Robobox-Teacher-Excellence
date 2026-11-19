@@ -624,3 +624,17 @@ body:has(.login){background:radial-gradient(640px 520px at 88% -4%,rgba(242,190,
 .fence .leaflet-bar a{width:36px;height:36px;line-height:36px;color:var(--ink)}
 .fence-note{position:absolute;z-index:500;left:10px;right:10px;top:10px;margin:0 0 0 46px;display:flex;align-items:flex-start;gap:6px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.92);box-shadow:var(--sh-1);color:var(--ink-2);font-size:12.5px;line-height:1.35;pointer-events:none}
 .fence-note .i{flex:none;margin-top:1px}
+/* tappable KPI tiles */
+button.stat{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:box-shadow var(--t-med) var(--ease),transform var(--t-press) var(--ease)}
+button.stat:hover{box-shadow:var(--sh-2)}
+button.stat:active{transform:scale(.98)}
+button.stat .stat-top>.i:last-child{margin-left:auto;color:var(--muted)}
+.stat-n small{font-size:15px;font-weight:600;color:var(--muted)}
+/* multi-pick chips (schools, grades) */
+.picks{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0}
+.pick{position:relative;display:inline-flex}
+.pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.pick span{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:14px;font-weight:550;cursor:pointer;transition:background-color var(--t-fast),border-color var(--t-fast),color var(--t-fast)}
+.pick input:checked+span{background:var(--ink);border-color:var(--ink);color:#fff}
+.pick input:focus-visible+span{box-shadow:var(--ring)}
+.coord .bar{margin-top:10px}

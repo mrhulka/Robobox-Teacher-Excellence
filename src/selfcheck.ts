@@ -121,5 +121,12 @@
   ok(ll(' 19.2183, 73.0868 ') === '19.2183,73.0868', 'plain coordinates');
   ok(ll('https://maps.app.goo.gl/6hMX61Bba2fiLHvm6') === null && ll('99.5, 10.1') === null, 'short links and bad ranges rejected');
 
+  // Monthly visit target windows (kept in sync with app.ts lastDayOf / prevMonth).
+  const lastDayOf = (m: string) => L(new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0));
+  const prevMonth = (m: string) => { const d = P(m + '-01'); d.setMonth(d.getMonth() - 1); return L(d).slice(0, 7); };
+  ok(lastDayOf('2026-11') === '2026-11-30' && lastDayOf('2026-12') === '2026-12-31', 'last day of month');
+  ok(lastDayOf('2028-02') === '2028-02-29' && lastDayOf('2027-02') === '2027-02-28', 'February, leap and not');
+  ok(prevMonth('2027-01') === '2026-12' && prevMonth('2026-03') === '2026-02', 'previous month across a year');
+
   console.log('selfcheck OK');
 })();

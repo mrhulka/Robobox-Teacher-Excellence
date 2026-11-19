@@ -6,11 +6,14 @@ const CONFIG = {
     expectedStart: '08:00', // school reporting time; lateness is measured from here. Per-school if timings vary.
     opsSlaDays: 3, // ponytail: target days from request to fulfilment for the Operations KPI — confirm with Robobox.
     workDays: [1, 2, 3, 4, 5], // Mon–Fri (0 = Sunday). Days outside this are never counted as absent.
-    ayStart: '2026-06-15', // Monday of 'Week 1' when lesson plans are numbered by week — confirm the AY start.
+    ayStart: '2026-06-15',
+    visitsFrom: '2026-11', // first month the 1-visit-per-school target is tracked; earlier months never ask for a reason // Monday of 'Week 1' when lesson plans are numbered by week — confirm the AY start.
     leaders: [
-        { name: 'Parth', title: 'CEO', top: true, profiles: true },
-        { name: 'Manish', title: 'Head, Teacher Network', top: true },
-        { name: 'Outsight', title: 'Outsight team', top: false },
+        { name: 'Parth', title: 'CEO', top: true, full: true, profiles: true },
+        { name: 'Manish', title: 'Head, Teacher Network', top: true, full: true },
+        // Outsight team: Parth's full view, but no approvals or decisions.
+        { name: 'Sajesh', title: 'Outsight team', top: false, full: true, profiles: true },
+        { name: 'Yash', title: 'Outsight team', top: false, full: true, profiles: true },
     ],
     // Live project kits — from Robobox_Kits.xlsx, sheet 'ROBOBOX KIT'. [component, standard kit qty]
     kits: [
