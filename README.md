@@ -16,6 +16,12 @@ python3 -m http.server   # visit http://localhost:8000
 ```
 `dist/` is committed so the site also hosts as-is without a build; re-run `npm run build` after editing `src/`.
 
+## Deploying (Hostinger or any PHP host)
+Upload a zip of the live files only — `index.html`, `styles.css`, `api.php`, `.htaccess`, `robots.txt`,
+`assets/`, and `dist/seed.js` `dist/config.js` `dist/store.js` `dist/app.js` — into the site's `public_html`
+and extract it (on Hostinger: File Manager, or *Deploy static site archive*). Source files are never needed on
+the server. `.htaccess` forces HTTPS (GPS and camera need it) and keeps app files fresh after each deploy.
+
 ## Source layout (`src/`, TypeScript)
 - `types.ts` — the shared data model (interfaces, type-only)
 - `seed.ts` — master data, generated from the Excel (do not hand-edit)
@@ -120,7 +126,7 @@ current location*. **Check-in map:** on the teacher's Home (and the coordinator'
 the user as a blue dot with a GPS-accuracy halo, plus "Inside the fence · 40 m" / "Outside · 300 m away". It
 drags and pinch-zooms like any map app and the fence and dot stay on it; *Re-centre* frames the school (and you,
 if you're nearby but outside). Built with [Leaflet](https://leafletjs.com) 1.9.4, vendored in
-`assets/vendor/leaflet/` (BSD-2, licence included) — no CDN. Tiles come from `tile.openstreetmap.org`, which is
+`assets/lib/leaflet/` (BSD-2, licence included) — no CDN. Tiles come from `tile.openstreetmap.org`, which is
 fine at Robobox's volume; for heavy use point `OSM_TILES` in `src/app.ts` at a tile provider (MapTiler, Stadia…)
 per the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
@@ -134,16 +140,22 @@ Seeded from the uploaded School–Teacher sheet (29 schools, 61 teachers, 3 coor
 the Teacher Visit Feedback Form (20 ratings, 9 critical standards). RAG is auto-computed in
 `computeRag()` — the single place to tune thresholds.
 
-## Known limitation → next step
-Persistence is **`localStorage`: single-device only.** For real cross-user sync (a teacher's
-phone and their coordinator's phone sharing data) and real passworded auth, swap `store.js` for
-a backend. Supabase is the laziest path — it gives Postgres + auth + row-level security with
-almost no server code; `src/store.ts` is written as the single swap point for exactly this.
+## Shared data (`api.php`)
+On the hosted site everyone works on **one shared record**: a teacher's check-in, leave, lesson update or
+request, a coordinator's visit or school pin, Parth's approval, HR's update — each reaches every other phone.
 
-**Permissions are enforced in the UI only** while data lives on-device. When a backend is added,
-the same rules (teachers can't read scores; coordinators see only their teachers; only Parth/Manish
-see coordinator scores and approve leave) must be enforced server-side, e.g. Supabase row-level security.
+- `api.php` (plain PHP, no database server) keeps the data in `../robobox-data/` — **outside the web root**, so a
+  browser can never fetch it and deploying a new version never touches it. Set `ROBOBOX_DATA` to move it.
+- Sign-in is checked by the server (default password = the person's name; changed passwords stored with
+  `password_hash`) and returns a signed 30-day token; every data call needs it.
+- Each phone applies its own changes at once, queues them, sends them, and pulls everyone else's changes every
+  15 s and whenever the app is reopened. Offline changes stay queued and go when the phone is back online.
+  Screens refresh with others' changes, but never while someone is typing or moving the map.
+- Library files and update attachments (≤ 20 MB) are stored by the server too.
+- Without a server (the Claude preview, a copy opened from disk) the app runs on-device only, as before.
 
-Library files and official-update attachments are stored on-device (IndexedDB, ≤20 MB); a real deployment points
-`fileSave`/`fileGet` at object storage (S3 / Supabase Storage). Also deferred (add when needed):
-push notifications, and per-school class-start times (currently one global `expectedStart`, 08:00).
+**Back up** `robobox-data/` (state.json, passwords.json, secret.key, files/) — that folder *is* the data.
+
+**Still to do:** the per-role rules (teachers don't see scores; coordinators see their own teachers) are enforced
+in the app, not by `api.php`; any signed-in person could read the raw data with the right tools. Fine for an
+internal pilot; move them server-side (or to MySQL with per-role queries) before wider use.

@@ -2,6 +2,8 @@
 Options -Indexes
 
 RewriteEngine On
+# Pass the sign-in token through to api.php (some Apache/LiteSpeed setups drop the Authorization header).
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 # HTTPS only: phone GPS (check-in geofence) and camera only work on a secure origin.
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]

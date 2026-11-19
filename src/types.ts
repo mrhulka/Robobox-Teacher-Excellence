@@ -9,7 +9,7 @@ interface School { id: string; name: string; mod: string; mapLink: string; locNo
 interface Teacher { name: string; mod: string; schools: string[]; }
 interface SeedData { moderators: string[]; schools: School[]; teachers: Teacher[]; lessons: LessonPlan[]; profileHints: Record<string, { education?: string; location?: string }>; }
 
-interface User { role: Role; name: string; mod?: string; }
+interface User { role: Role; name: string; mod?: string; token?: string; } // token: signed by api.php on the hosted site
 
 interface Attendance { id?: string; teacher: string; date: string; inTime: string; inSchool: string; inLate: number; inDist: number; outTime?: string; outSchool?: string; outDist?: number; }
 interface Feedback {

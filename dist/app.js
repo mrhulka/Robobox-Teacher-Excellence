@@ -113,10 +113,20 @@ function idb() {
     });
 }
 async function fileSave(id, blob) {
+    if (STORE.shared) { // hosted: everyone can open it
+        const r = await STORE.api('a=file&id=' + encodeURIComponent(id), { method: 'POST', headers: { 'Content-Type': blob.type || 'application/octet-stream' }, body: blob });
+        if (!r.ok)
+            throw new Error('upload failed');
+        return;
+    }
     const db = await idb();
     await new Promise((res, rej) => { const tx = db.transaction('files', 'readwrite'); tx.objectStore('files').put(blob, id); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
 }
 async function fileGet(id) {
+    if (STORE.shared) {
+        const r = await STORE.api('a=file&id=' + encodeURIComponent(id));
+        return r.ok ? r.blob() : undefined;
+    }
     const db = await idb();
     return new Promise((res, rej) => { const tx = db.transaction('files', 'readonly'); const g = tx.objectStore('files').get(id); g.onsuccess = () => res(g.result); g.onerror = () => rej(g.error); });
 }
@@ -242,7 +252,7 @@ async function atSchool(school) {
 }
 /* ---------- geofence map: OpenStreetMap (Leaflet) with the fence circle and where you are ---------- */
 // Free, no key: drag and pinch/zoom like any map app; the fence and your dot are part of the map, so they
-// stay put while it moves. Leaflet is vendored in assets/vendor/leaflet (no CDN needed).
+// stay put while it moves. Leaflet is vendored in assets/lib/leaflet (no CDN needed).
 // ponytail: tiles from tile.openstreetmap.org — fine at Robobox's volume; for heavy use switch the URL in
 // OSM_TILES to a tile provider (MapTiler, Stadia, Thunderforest…) per the OSM tile usage policy.
 const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -289,6 +299,7 @@ function drawFence() {
             LM.map.remove(); // the old container left the page on re-render
         const map = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView(school, 17);
         map.createPane('you').style.zIndex = '650'; // your dot above the school pin, even standing right at it
+        map.on('dragstart zoomstart', () => { DIRTY = true; }); // someone exploring the map: don't redraw under them
         // If no street image ever loads (offline, or a host that blocks outside images — like the claude.ai
         // preview), say so instead of showing a blank map. The fence, pin and your dot still work.
         let tiles = 0;
@@ -515,8 +526,13 @@ function openTeacher(name) {
 // Page-enter motion only on navigation, not on every in-page re-render.
 function entered() { var _a; window.scrollTo(0, 0); (_a = document.getElementById('main')) === null || _a === void 0 ? void 0 : _a.classList.add('enter'); }
 function closeTeacher() { SEL = null; render(); }
+// Changes from other phones redraw the screen — but never while someone is filling something in.
+let DIRTY = false;
+document.addEventListener('input', () => { DIRTY = true; });
+const typing = () => DIRTY || !!(document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
 function render() {
     var _a, _b;
+    DIRTY = false;
     const u = SESSION.get();
     const app = $('app');
     if (!u) {
@@ -541,7 +557,7 @@ function render() {
     <main class="wrap" id="main">${gate || PROF ? profileView(u, gate) : VIEWS[u.role + ':' + active](u)}</main>
     ${gate ? '' : `<nav class="tabbar" aria-label="Main">${tabs.map((t) => `<button class="tab${t.id === active ? ' on' : ''}${t.short ? ' s-' + t.at : ''}" ${t.short ? `aria-label="${t.label}"` : ''} ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 22)}<span class="lbl">${t.label}</span>${t.short ? `<span class="lbl-s" aria-hidden="true">${t.short}</span>` : ''}${dot(t)}</button>`).join('')}</nav>`}`;
 }
-function logout() { SESSION.clear(); Object.keys(TAB).forEach((k) => delete TAB[k]); SEL = null; PROF = false; PF_SELFIE = ''; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t)
+function logout() { SESSION.clear(); STORE.setToken(''); Object.keys(TAB).forEach((k) => delete TAB[k]); SEL = null; PROF = false; PF_SELFIE = ''; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t)
     t.innerHTML = ''; render(); }
 function people() {
     return [
@@ -657,12 +673,34 @@ async function lgSubmit(e) {
         $('lgName').focus();
         return;
     }
-    if (!(await pwOk(p, pw))) {
+    const u = { role: p.role, name: p.name };
+    if (STORE.shared) { // hosted: the server checks the password and signs a token
+        let r;
+        try {
+            r = await STORE.api('a=login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: p.role, name: p.name, password: pw }) });
+        }
+        catch (err) {
+            setErr('lgErr', 'Can’t reach the server — check your internet and try again.');
+            return;
+        }
+        if (r.status === 401) {
+            setErr('lgErr', 'Wrong password. First time? It’s your name.');
+            $('lgPw').select();
+            return;
+        }
+        if (!r.ok) {
+            setErr('lgErr', 'Sign-in failed — please try again.');
+            return;
+        }
+        u.token = (await r.json()).token;
+        STORE.setToken(u.token);
+        await STORE.sync(); // this phone's copy is current before the first screen (e.g. a profile done elsewhere)
+    }
+    else if (!(await pwOk(p, pw))) {
         setErr('lgErr', 'Wrong password. First time? It’s your name.');
         $('lgPw').select();
         return;
     }
-    const u = { role: p.role, name: p.name };
     if (p.role === 'teacher')
         u.mod = STORE.teacher(p.name).mod;
     SESSION.set(u);
@@ -676,7 +714,7 @@ async function changePassword() {
     setErr('pwCurErr', '');
     setErr('pwNewErr', '');
     setErr('pwNew2Err', '');
-    if (!(await pwOk(u, cur))) {
+    if (!STORE.shared && !(await pwOk(u, cur))) {
         setErr('pwCurErr', 'That isn’t your current password.');
         $('pwCur').focus();
         return;
@@ -694,6 +732,28 @@ async function changePassword() {
     if (nw !== again) {
         setErr('pwNew2Err', 'The two passwords don’t match.');
         $('pwNew2').focus();
+        return;
+    }
+    if (STORE.shared) {
+        let r;
+        try {
+            r = await STORE.api('a=password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current: cur, next: nw }) });
+        }
+        catch (err) {
+            flash('err', 'Can’t reach the server — try again when you’re online.');
+            return;
+        }
+        if (r.status === 403) {
+            setErr('pwCurErr', 'That isn’t your current password.');
+            $('pwCur').focus();
+            return;
+        }
+        if (!r.ok) {
+            flash('err', 'Password not changed — please try again.');
+            return;
+        }
+        ['pwCur', 'pwNew', 'pwNew2'].forEach((id) => { $(id).value = ''; });
+        flash('ok', 'Password changed. Use it next time you sign in.');
         return;
     }
     const key = pwKey(u.role, u.name);
@@ -2300,4 +2360,27 @@ const VIEWS = {
     'ceo:coords': cCoords, 'ceo:leave': cLeave, 'ceo:upd': updatesView,
     'ops:req': opsRequests, 'ops:upd': updatesView, 'hr:upd': updatesView,
 };
-render();
+// Start-up: find the server (hosted site) or stay on-device (preview), then draw and keep in step.
+STORE.onRemoteChange(() => { if (!typing() && !VISIT)
+    render(); });
+STORE.onSignedOut(() => { if (SESSION.get()) {
+    logout();
+    flash('warn', 'Please sign in again.');
+} });
+(async () => {
+    const shared = await STORE.connect();
+    const u = SESSION.get();
+    if (shared && u && !u.token)
+        SESSION.clear(); // signed in before the server existed: sign in properly
+    if (u && u.token) {
+        STORE.setToken(u.token);
+        void STORE.sync();
+    }
+    render();
+    if (shared) {
+        setInterval(() => { void STORE.sync(); }, 15000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden)
+            void STORE.sync(); });
+        window.addEventListener('online', () => { void STORE.sync(); });
+    }
+})();

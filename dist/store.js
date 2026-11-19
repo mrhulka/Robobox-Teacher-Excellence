@@ -1,14 +1,14 @@
 "use strict";
-// STORE = the only persistence layer. Swap the load/save pair for Supabase/Firebase to go multi-device.
-// ponytail: localStorage = single-device demo persistence. Real cross-user sync needs a backend (see README).
-// Classic script: STORE is a global shared with the other scripts.
 const STORE = (() => {
-    const K = 'robobox_tep_v1';
+    const K = 'robobox_tep_v1', KS = 'robobox_tep_sync';
+    const SYNCED = ['schools', 'attendance', 'feedback', 'leaves', 'requests', 'tasks', 'materials', 'plans',
+        'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles'];
     function seedDb() {
+        const copy = (x) => JSON.parse(JSON.stringify(x));
         return {
-            schools: SEED.schools, teachers: SEED.teachers, moderators: SEED.moderators,
+            schools: copy(SEED.schools), teachers: SEED.teachers, moderators: SEED.moderators,
             attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
-            notices: [], holidays: [], events: [], lessons: SEED.lessons, planUpdates: [], profiles: [], passwords: [],
+            notices: [], holidays: [], events: [], lessons: copy(SEED.lessons), planUpdates: [], profiles: [], passwords: [],
         };
     }
     function load() {
@@ -46,6 +46,98 @@ const STORE = (() => {
         localStorage.setItem(K, JSON.stringify(db));
     }
     catch (e) { /* ignore */ } }
+    // ---- sync state: server mode, last version pulled, changes not yet sent ----
+    let S = { shared: false, v: 0, outbox: [] };
+    try {
+        S = { ...S, ...JSON.parse(localStorage.getItem(KS) || '{}') };
+    }
+    catch (e) { /* ignore */ }
+    const saveSync = () => { try {
+        localStorage.setItem(KS, JSON.stringify(S));
+    }
+    catch (e) { /* ignore */ } };
+    let token = '';
+    let onChange = null;
+    let onLost = null;
+    let busy = false;
+    const queue = (op) => { if (!S.shared)
+        return; S.outbox.push(op); saveSync(); void sync(); };
+    async function api(path, init = {}) {
+        const headers = { ...(init.headers || {}), ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+        return fetch('api.php?' + path, { ...init, headers, cache: 'no-store' });
+    }
+    // Applies records from the server onto this phone's copy. Records with a change still waiting to be sent are
+    // skipped, so a slow upload is never overwritten by the older server copy.
+    function apply(changes) {
+        const pending = new Set(S.outbox.map((o) => o.coll + '|' + o.id));
+        let any = false;
+        Object.keys(changes).forEach((coll) => {
+            if (!SYNCED.includes(coll))
+                return;
+            const arr = db[coll];
+            changes[coll].forEach((rec) => {
+                if (pending.has(coll + '|' + rec.id))
+                    return;
+                const i = arr.findIndex((x) => x.id === rec.id);
+                any = true;
+                if (rec._del) {
+                    if (i >= 0)
+                        arr.splice(i, 1);
+                    return;
+                }
+                const clean = { ...rec };
+                delete clean._v;
+                // Merge, not replace: a seeded record (a school, a session) is held on the server only as its changed fields.
+                if (i >= 0)
+                    arr[i] = { ...arr[i], ...clean };
+                else
+                    arr.push(clean);
+            });
+        });
+        if (any)
+            save();
+        return any;
+    }
+    // Send what's queued, then pull what changed. One run at a time; failures just wait for the next tick.
+    async function sync() {
+        if (!S.shared || !token || busy)
+            return;
+        busy = true;
+        try {
+            while (S.outbox.length) {
+                const ops = S.outbox.slice(0, 200);
+                const r = await api('a=push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops }) });
+                if (r.status === 401) {
+                    token = '';
+                    if (onLost)
+                        onLost();
+                    break;
+                }
+                if (!r.ok)
+                    break;
+                S.outbox.splice(0, ops.length);
+                saveSync();
+            }
+            const r = await api('a=pull&since=' + S.v);
+            if (r.status === 401) {
+                token = '';
+                if (onLost)
+                    onLost();
+            }
+            else if (r.ok) {
+                const j = await r.json();
+                const changed = apply(j.changes || {});
+                S.v = j.v;
+                saveSync();
+                if (changed && onChange)
+                    onChange();
+            }
+        }
+        catch (e) { /* offline: keep the queue, try again next tick */ }
+        finally {
+            busy = false;
+        }
+    }
     return {
         get(coll) { return db[coll]; },
         school(id) { return db.schools.find((s) => s.id === id); },
@@ -55,6 +147,8 @@ const STORE = (() => {
             r.id = r.id || (String(coll) + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
             db[coll].push(rec);
             save();
+            if (SYNCED.includes(coll))
+                queue({ coll, op: 'put', id: r.id, rec });
             return rec;
         },
         update(coll, id, patch) {
@@ -62,6 +156,8 @@ const STORE = (() => {
             if (r)
                 Object.assign(r, patch);
             save();
+            if (SYNCED.includes(coll))
+                queue({ coll, op: 'patch', id, rec: patch });
         },
         remove(coll, id) {
             const arr = db[coll];
@@ -70,6 +166,8 @@ const STORE = (() => {
                 arr.splice(i, 1);
                 save();
             }
+            if (SYNCED.includes(coll))
+                queue({ coll, op: 'del', id });
         },
         setSchoolLoc(id, lat, lng) {
             const s = this.school(id);
@@ -77,8 +175,43 @@ const STORE = (() => {
                 s.lat = lat;
                 s.lng = lng;
                 save();
+                queue({ coll: 'schools', op: 'patch', id, rec: { lat, lng } });
             }
         },
         reset() { db = seedDb(); save(); },
+        // ---- shared mode ----
+        get shared() { return S.shared; },
+        // Is there a server? Switching into shared mode starts this phone from the seed plus the server's changes,
+        // dropping anything kept from local-only use (demo data must never leak into the shared record).
+        async connect() {
+            let r;
+            try {
+                r = await fetch('api.php?a=ping', { cache: 'no-store' });
+            }
+            catch (e) {
+                return S.shared;
+            } // offline: stay as we were, keep the queue
+            const j = r.ok ? await r.json().catch(() => null) : null;
+            if (j && j.ok) {
+                if (!S.shared) {
+                    db = withIds(seedDb());
+                    save();
+                    S = { shared: true, v: 0, outbox: [] };
+                    saveSync();
+                }
+                return true;
+            }
+            if (S.shared) {
+                S = { shared: false, v: 0, outbox: [] };
+                saveSync();
+            } // a server answered, but not ours: local copy
+            return false;
+        },
+        setToken(t) { token = t; },
+        onRemoteChange(fn) { onChange = fn; },
+        onSignedOut(fn) { onLost = fn; },
+        sync,
+        pending() { return S.outbox.length; },
+        api,
     };
 })();
