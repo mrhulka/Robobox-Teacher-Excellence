@@ -46,7 +46,7 @@ and the same motion curve and keyframes (`rb-rise`, `rb-pop`, `rb-shake`…). It
 | Sign-in | What they get | Sees scores? |
 |---------|---------------|--------------|
 | **Teacher** | Geofenced check-in/out (100 m; can check in at one school, out at another), weekly **lesson plans** with progress updates, attendance calendar (present / late / absent / leave / holiday) + leave, component requests with delivery tracking, school events, updates. | **No** |
-| **Coordinator** | Their teachers only: scores, trend, action plans, lesson-plan compliance; geofenced visits (checked on arrival **and again at submit**; both readings saved with the visit) → feedback form (action plan + next visit required, follow-up added to the calendar); calendar; **own leave** + their teachers' leave (view only); school events on the dashboard; updates. | Their teachers' — not their own |
+| **Coordinator** | Their teachers only: scores, trend, action plans, lesson-plan compliance; **check in at the school** on arrival (geofenced; records the date and time reached) → only then the review form opens, for as many teachers as they observe there (action plan + next visit required, follow-up added to the calendar); calendar; **own leave** + their teachers' leave (view only); school events on the dashboard; updates. | Their teachers' — not their own |
 | **Parth (CEO) / Manish** | Overview (incl. Operations KPI and school events), all teachers, coordinator scores, **leave approvals for teachers and coordinators**, lesson-plan loading (Excel upload), reports. **Parth only:** the profile repository + birthday calendar (*Teachers → Profiles*, Excel download). | Everything |
 | **Sajesh / Yash (Outsight team)** | Everything Parth sees — overview, schools, teachers, profiles, coordinators, leave, reports and downloads — but **no decisions**: no leave approval, lesson-plan loading, adding coordinators or moving school pins. | Everything |
 | **Operations** | All component requests: confirm an expected date (the teacher sees it), mark fulfilled, Excel export, fulfilment KPI. | No |
@@ -67,6 +67,7 @@ its school page. Only real people can sign in — the server checks the name aga
   a school: present today, visits, lesson-plan progress, each teacher's check-in, average lateness and score.
 - Overview shows teachers, coordinators, **present today** (teachers checked in at school) and each coordinator's
   **visits this month** against the target of **one visit per school per month**.
+- A coordinator's school check-in counts as that school's visit. Leadership sees each coordinator's latest check-in, and the visit log export has a *School check-ins* sheet (date, time reached, distance).
 - Coordinators see their own target on *My teachers*. On the month's last day, if schools are still unvisited,
   they must give a reason; a month that ended short keeps asking until they do. Leadership sees the reasons.
   Tracking starts in `CONFIG.visitsFrom` (November 2026).

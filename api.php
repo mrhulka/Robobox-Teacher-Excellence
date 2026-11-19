@@ -25,7 +25,7 @@ header('X-Content-Type-Options: nosniff');
 $DATA = getenv('ROBOBOX_DATA') ?: dirname(__DIR__) . '/robobox-data';
 const MAX_FILE = 20 * 1024 * 1024;
 const COLLS = ['schools', 'attendance', 'feedback', 'leaves', 'requests', 'tasks', 'materials', 'plans',
-  'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles', 'members', 'visitReasons'];
+  'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles', 'members', 'visitReasons', 'modCheckins'];
 const ROLES = ['teacher', 'mod', 'ceo', 'ops', 'hr'];
 // Leadership sign-ins — keep in step with CONFIG.leaders in src/config.ts.
 const LEADERS = ['Parth', 'Manish', 'Sajesh', 'Yash'];

@@ -100,7 +100,7 @@ const SEED = {
         },
         {
             "id": "s8",
-            "name": "NHPS",
+            "name": "NHPS Sec 19",
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/btmSj3poJqUL5EdV6?g_st=aw",
             "locNote": "",
@@ -113,7 +113,7 @@ const SEED = {
         },
         {
             "id": "s9",
-            "name": "NHPS",
+            "name": "NHPS Sec 3",
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/hszp6dKrDXimzbVEA?g_st=aw",
             "locNote": "",

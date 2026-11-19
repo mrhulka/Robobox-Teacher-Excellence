@@ -1975,7 +1975,7 @@ function perfInner(name) {
             prev = s;
         const dstr = delta == null ? '' : delta > 0.05 ? `<span class="delta up">+${delta.toFixed(1)}</span>` : delta < -0.05 ? `<span class="delta down">−${Math.abs(delta).toFixed(1)}</span>` : '<span class="delta">±0</span>';
         return `<div class="visit">
-      <div class="visit-top"><span class="row-main"><b>${fmtD(f.date)} · ${esc(schoolName(f.school))}</b><small>${esc(f.judgement.improvement)} · by ${esc(f.mod)}</small>${f.outAt ? `<small class="geo-ok">${ic('pin', 13)}At school ${f.inAt ? `${fmtT(f.inAt)} (${f.inDist} m)` : ''} → submitted ${fmtT(f.outAt)} (${f.outDist} m)</small>` : ''}</span>
+      <div class="visit-top"><span class="row-main"><b>${fmtD(f.date)} · ${esc(schoolName(f.school))}</b><small>${esc(f.judgement.improvement)} · by ${esc(f.mod)}</small>${f.inAt ? `<small class="geo-ok">${ic('pin', 13)}Checked in at ${fmtT(f.inAt)} · ${f.inDist} m from the school</small>` : ''}</span>
         <span class="row-end"><span class="score">${s != null ? s.toFixed(1) : '—'}</span>${dstr}${ragPill(f.rag)}</span></div>
       <div class="bar"><span style="width:${s != null ? Math.round((s / 5) * 100) : 0}%;background:var(--${f.rag})"></span></div>
       ${f.actionPlan ? `<div class="plan">${ic('target', 16)}<div><b>Action plan</b><p>${esc(f.actionPlan)}</p>${f.nextVisit ? `<small>Next visit: ${fmtLong(f.nextVisit)}</small>` : ''}</div></div>` : ''}
@@ -2018,34 +2018,45 @@ function addTask(teacher) {
 }
 /* ---- visit + feedback form ---- */
 let VISIT = null;
+// The coordinator's latest check-in today, if any — reviews are written under it.
+const checkinToday = (mod) => STORE.get('modCheckins').filter((c) => c.mod === mod && c.date === todayStr()).sort((a, b) => b.at.localeCompare(a.at))[0];
 function mVisit(u) {
     const schools = schoolsOfMod(u.name);
+    const ci = checkinToday(u.name);
     const todays = STORE.get('plans').filter((p) => p.mod === u.name && p.status === 'Planned' && p.date === todayStr());
     const evToday = eventsFor(u).filter((e) => eventOn(e, todayStr()));
-    return pageHead('Classroom visit', `Verify you're at the school (within ${CONFIG.geofenceMeters} m) to open the form — it's checked again when you submit.`) +
+    const pre = ci ? ci.school : (todays[0] || { school: '' }).school;
+    return pageHead('School visit', `Check in when you reach the school (within ${CONFIG.geofenceMeters} m). The review form opens after you've checked in.`) +
         (evToday.length ? `<div class="notice info">${ic('flag', 18)}<span>Today at your schools: ${evToday.map((e) => `<b>${esc(e.title || e.type)}</b> at ${esc(schoolName(e.school))}`).join(', ')}</span></div>` : '') +
         (todays.length ? `<div class="notice brand">${ic('calendar', 18)}<span>Planned today: <b>${todays.map((p) => esc(schoolName(p.school))).join(', ')}</b></span></div>` : '') +
-        `<section class="card">
+        (ci ? `<section class="card checkin"><div class="checkin-status in"><span class="status-dot" aria-hidden="true"></span><div>
+        <b>Checked in at ${esc(schoolName(ci.school))}</b><small>${fmtLong(ci.date)} · reached at ${fmtT(ci.at)} · ${ci.dist} m from the school</small></div></div>
+        <button class="btn block" onclick="startReview('${ci.id}')">${ic('clipboard', 18)}Review a teacher here</button></section>` : '') +
+        `<section class="card"><h3 class="card-title">${ci ? 'Moved to another school?' : 'Check in at a school'}</h3>
       <label class="field-l" for="vSchool">School</label>
-      <select id="vSchool" onchange="drawFence();locateMe(false)">${schools.map((s) => `<option value="${s.id}"${todays.some((p) => p.school === s.id) ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
+      <select id="vSchool" onchange="drawFence();locateMe(false)">${schools.map((s) => `<option value="${s.id}"${s.id === pre ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
       ${fenceBox('vSchool')}
-      <button class="btn block" onclick="unlockVisit()">${ic('pin', 18)}Verify I'm at this school</button>
+      <button class="btn block${ci ? ' ghost' : ''}" onclick="checkInSchool()">${ic('login', 18)}Check in at this school</button>
     </section>
     <h2 class="section-title">School locations · ${schools.filter((s) => s.lat != null).length}/${schools.length} set</h2>
-    <p class="hint">Teachers check in only within ${CONFIG.geofenceMeters} m of these points. Paste the school's Google Maps link, or stand at the gate and use your location.</p>
+    <p class="hint">Check-ins work only within ${CONFIG.geofenceMeters} m of these points. Paste the school's Google Maps link, or stand at the gate and use your location.</p>
     ${schoolLocations(schools)}
-    <h2 class="section-title">Recent visits</h2>
-    <div class="card list">${STORE.get('feedback').filter((f) => f.mod === u.name).slice(-8).reverse().map(visitRow).join('') || empty('pin', 'No visits logged yet', 'Your submitted feedback appears here.')}</div>`;
+    <h2 class="section-title">Recent check-ins</h2>
+    <div class="card list">${STORE.get('modCheckins').filter((c) => c.mod === u.name).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 6).map(checkinRow).join('') || empty('pin', 'No check-ins yet', 'Each school you check in at appears here with the time you reached it.')}</div>
+    <h2 class="section-title">Recent reviews</h2>
+    <div class="card list">${STORE.get('feedback').filter((f) => f.mod === u.name).slice(-8).reverse().map(visitRow).join('') || empty('clipboard', 'No reviews yet', 'Reviews you submit appear here.')}</div>`;
 }
+const checkinRow = (c) => `<div class="row-item">${dateChip(c.date)}<span class="row-main"><b>${esc(schoolName(c.school))}</b><small>Reached at ${fmtT(c.at)} · ${c.dist} m from the school${STORE.get('feedback').some((f) => f.mod === c.mod && f.school === c.school && f.date === c.date) ? ` · ${plural(STORE.get('feedback').filter((f) => f.mod === c.mod && f.school === c.school && f.date === c.date).length, 'review')}` : ''}</small></span></div>`;
 function visitRow(f) {
     return `<button class="row-item tap" onclick="openTeacherTab('${esc(f.teacher)}')"><span class="avatar">${initials(f.teacher)}</span>
     <span class="row-main"><b>${esc(f.teacher)}</b><small>${esc(schoolName(f.school))} · ${fmtD(f.date)}${f.nextVisit ? ' · next ' + fmtD(f.nextVisit) : ''}</small></span>
     <span class="row-end"><span class="score">${f.score != null ? f.score.toFixed(1) : '—'}</span>${ragPill(f.rag)}</span></button>`;
 }
 function openTeacherTab(name) { const u = SESSION.get(); TAB[u.role] = 'teachers'; openTeacher(name); }
-async function unlockVisit() {
+async function checkInSchool() {
+    const u = SESSION.get();
     const school = STORE.school($('vSchool').value);
-    flash('warn', `Verifying your location at ${school.name}…`);
+    flash('warn', `Checking you're at ${school.name}…`);
     try {
         const g = await atSchool(school);
         if (!g) {
@@ -2053,23 +2064,32 @@ async function unlockVisit() {
             return;
         }
         if (!g.ok) {
-            flash('err', `You are ${Math.round(g.dist)} m away — move within ${CONFIG.geofenceMeters} m to open the form.`);
+            flash('err', `You are ${Math.round(g.dist)} m from ${school.name} — check in within ${CONFIG.geofenceMeters} m of the school.`);
             return;
         }
-        VISIT = { school: school.id, teacher: null, ratings: {}, critical: {}, judgement: {}, step: 'pickTeacher', inAt: new Date().toISOString(), inDist: Math.round(g.dist) };
-        flash('ok', 'Location verified.');
-        render();
-        window.scrollTo(0, 0);
+        const c = STORE.add('modCheckins', { mod: u.name, school: school.id, date: todayStr(), at: new Date().toISOString(), dist: Math.round(g.dist) });
+        flash('ok', `Checked in at ${school.name} · ${fmtT(c.at)}.`);
+        startReview(c.id);
     }
     catch (e) {
         flash('err', e.message);
     }
 }
+function startReview(checkinId) {
+    const c = STORE.get('modCheckins').find((x) => x.id === checkinId);
+    if (!c || c.date !== todayStr()) {
+        render();
+        return;
+    }
+    VISIT = { school: c.school, teacher: null, ratings: {}, critical: {}, judgement: {}, step: 'pickTeacher', inAt: c.at, inDist: c.dist };
+    render();
+    window.scrollTo(0, 0);
+}
 function mForm() {
     const v = VISIT;
     const school = STORE.school(v.school);
     if (v.step === 'pickTeacher') {
-        return backLink('Cancel visit', 'cancelVisit()') + pageHead(esc(school.name), 'Location verified — pick the teacher you observed.') +
+        return backLink('Visit', 'cancelVisit()') + pageHead(esc(school.name), `Checked in at ${fmtT(v.inAt)} — pick the teacher you observed.`) +
             `<div class="card list">${teachersAtSchool(school.id).map((t) => `<button class="row-item tap" onclick="pickVisitTeacher('${esc(t.name)}')"><span class="avatar">${initials(t.name)}</span><span class="row-main"><b>${esc(t.name)}</b></span><span class="row-end">${leaveOn(t.name) ? badge('On leave', 'amber') : ''}${ic('chevR', 18)}</span></button>`).join('')}</div>`;
     }
     const rq = (id, label) => `<div class="q"><div class="qt">${esc(label)}</div>
@@ -2115,12 +2135,7 @@ function cancelVisit() { VISIT = null; render(); }
 function pickIn(btn) { btn.parentElement.querySelectorAll('button').forEach((b) => b.classList.remove('on')); btn.classList.add('on'); }
 function setCritical(btn, id, value) { VISIT.critical[id] = value; pickIn(btn); updateRagLive(); }
 function setRate(btn, id, v) { VISIT.ratings[id] = v; pickIn(btn); updateRagLive(); }
-// The coordinator must still be inside the school's geofence when submitting — the same check as on arrival —
-// so a form opened at school can't be filled in and sent from somewhere else. Answers are kept if it fails.
-let SUBMITTING = false;
-async function submitVisit() {
-    if (SUBMITTING)
-        return;
+function submitVisit() {
     const u = SESSION.get();
     const v = VISIT;
     const today = todayStr();
@@ -2135,27 +2150,6 @@ async function submitVisit() {
         flash('err', 'Add the action plan and next visit date.');
         return;
     }
-    const school = STORE.school(v.school);
-    SUBMITTING = true;
-    flash('warn', `Confirming you're still at ${school.name}…`);
-    let g;
-    try {
-        g = await atSchool(school);
-    }
-    catch (e) {
-        SUBMITTING = false;
-        flash('err', e.message + ' Your answers are kept.');
-        return;
-    }
-    SUBMITTING = false;
-    if (!g) {
-        flash('warn', 'Cancelled — your answers are kept.');
-        return;
-    }
-    if (!g.ok) {
-        flash('err', `You're ${Math.round(g.dist)} m from ${school.name}. Feedback can only be submitted at the school, within ${CONFIG.geofenceMeters} m — your answers are kept.`);
-        return;
-    }
     const ratings = {};
     Object.entries(v.ratings).forEach(([k, val]) => { if (typeof val === 'number')
         ratings[k] = val; });
@@ -2166,7 +2160,7 @@ async function submitVisit() {
         ratings, critical: v.critical,
         judgement: { independence: $('jInd').value, improvement: $('jImp').value, action: $('jAct').value },
         rag: computeRag(v.ratings, v.critical), note: $('jNote').value, safety, score: null, actionPlan, nextVisit,
-        inAt: v.inAt, inDist: v.inDist, outAt: new Date().toISOString(), outDist: Math.round(g.dist),
+        inAt: v.inAt, inDist: v.inDist,
     };
     fb.score = visitScore(fb);
     STORE.add('feedback', fb);
@@ -2331,6 +2325,7 @@ function cCoords(u) {
         <span class="coord-score"><b>${sc != null ? sc.toFixed(1) : '—'}</b><small>score</small></span></div>
         <div class="mini-stats"><span><b>${visitStats(m).done}/${visitStats(m).target}</b>schools visited</span><span><b>${vs.filter((f) => f.date.startsWith(month)).length}</b>visits this month</span><span><b>${upcoming}</b>planned ahead</span></div>
         ${pctBar(visitStats(m).done, visitStats(m).target)}
+        ${(() => { const c = STORE.get('modCheckins').filter((x) => x.mod === m).sort((a, b) => b.at.localeCompare(a.at))[0]; return c ? `<p class="hint">${ic('pin', 14)} Last check-in: <b>${esc(schoolName(c.school))}</b> · ${fmtD(c.date)}, ${fmtT(c.at)}</p>` : ''; })()}
         <div class="legend tight">${['green', 'amber', 'red'].map((k) => `<span><i class="seg-${k}"></i><b>${c[k]}</b>${cap(k)}</span>`).join('')}</div></section>`;
         }).join('')}</div>
     ${isTop(u) ? `<h2 class="section-title">School locations · ${STORE.get('schools').filter((s) => s.lat != null).length}/${STORE.get('schools').length} set</h2>${schoolLocations(STORE.get('schools'))}` : ''}`;
@@ -2426,11 +2421,13 @@ const lastDayOf = (m) => isoLocal(new Date(Number(m.slice(0, 4)), Number(m.slice
 // Target: one visit per school per month. "Done" = schools visited at least once that month.
 function visitStats(mod, month = todayStr().slice(0, 7)) {
     const schools = schoolsOfMod(mod);
-    const fb = STORE.get('feedback').filter((f) => f.mod === mod && f.date.startsWith(month));
-    const seen = new Set(fb.map((f) => f.school));
-    return { target: schools.length, done: schools.filter((s) => seen.has(s.id)).length, visits: fb.length,
+    const ci = STORE.get('modCheckins').filter((c) => c.mod === mod && c.date.startsWith(month));
+    const seen = new Set([...ci.map((c) => c.school), ...STORE.get('feedback').filter((f) => f.mod === mod && f.date.startsWith(month)).map((f) => f.school)]);
+    return { target: schools.length, done: schools.filter((s) => seen.has(s.id)).length, visits: ci.length,
         planned: STORE.get('plans').filter((p) => p.mod === mod && p.date.startsWith(month)).length, missing: schools.filter((s) => !seen.has(s.id)) };
 }
+// Dates a school was visited: coordinator check-ins (plus reviews logged before check-ins existed).
+const schoolVisitDates = (id) => [...STORE.get('modCheckins').filter((c) => c.school === id).map((c) => c.date), ...STORE.get('feedback').filter((f) => f.school === id && !f.inAt).map((f) => f.date)].sort();
 const reasonFor = (mod, month) => STORE.get('visitReasons').find((r) => r.mod === mod && r.month === month);
 const pctBar = (done, target) => `<div class="bar"><span style="width:${target ? Math.min(100, Math.round((100 * done) / target)) : 0}%;background:var(--${done >= target ? 'green' : 'brand'})"></span></div>`;
 function schoolsList(u) {
@@ -2440,7 +2437,7 @@ function schoolsList(u) {
         pageHead('Schools', `${ss.length} schools · ${STORE.get('teachers').length} teachers · ${STORE.get('moderators').length} coordinators`, seesAll(u) ? `<button class="btn ghost sm" onclick="reportSchools()">${ic('download', 16)}All schools (Excel)</button>` : '') +
         searchBox('scList', 'Search school or coordinator') +
         `<div class="card list" id="scList">${ss.map((s) => {
-            const visited = STORE.get('feedback').some((f) => f.school === s.id && f.date.startsWith(month));
+            const visited = schoolVisitDates(s.id).some((d) => d.startsWith(month));
             return `<button class="row-item tap" data-q="${esc((s.name + ' ' + s.mod).toLowerCase())}" onclick="openSchool('${s.id}')"><span class="row-ic">${ic('home', 18)}</span>
         <span class="row-main"><b>${esc(schoolLabel(s.name))}</b><small>${esc(s.mod)} · ${plural(s.teachers.length, 'teacher')} · ${presentToday(s.teachers)} present today</small></span>
         <span class="row-end">${visited ? badge('Visited', 'green') : badge('Not visited', 'neutral')}${ic('chevR', 18)}</span></button>`;
@@ -2455,9 +2452,9 @@ function schoolDetail(u, id) {
     const ts = teachersAtSchool(id);
     const names = ts.map((t) => t.name);
     const month = todayStr().slice(0, 7);
-    const vs = STORE.get('feedback').filter((f) => f.school === id).sort((a, b) => b.date.localeCompare(a.date));
+    const vs = schoolVisitDates(id).reverse(); // newest first
     return backLink('All schools', 'closeSchool()') + pageHead(esc(schoolLabel(s.name)), `Coordinator ${esc(s.mod)} · ${plural(ts.length, 'teacher')}`) +
-        `<div class="kpis">${kpi('Teachers', ts.length, 'users')}${kpi('Present today', `${presentToday(names)}/${ts.length}`, 'check')}${kpi('Visits · this month', vs.filter((f) => f.date.startsWith(month)).length, 'pin')}${kpi('Last visit', vs[0] ? fmtD(vs[0].date) : '—', 'calendar')}</div>` +
+        `<div class="kpis">${kpi('Teachers', ts.length, 'users')}${kpi('Present today', `${presentToday(names)}/${ts.length}`, 'check')}${kpi('Visits · this month', vs.filter((d) => d.startsWith(month)).length, 'pin')}${kpi('Last visit', vs[0] ? fmtD(vs[0]) : '—', 'calendar')}</div>` +
         (isTop(u) ? `<section class="card"><label class="field-l" for="scMod" style="margin-top:0">Coordinator for this school</label><select id="scMod" onchange="setSchoolCoord('${id}', this.value)">${STORE.get('moderators').map((m) => `<option${m === s.mod ? ' selected' : ''}>${esc(m)}</option>`).join('')}</select></section>` : '') +
         progressCard(names, todayStr(), 'Lesson plan progress') +
         `<h2 class="section-title">Teachers</h2><div class="card list">${ts.length ? ts.map((t) => {
@@ -2536,7 +2533,7 @@ function reportSchools() {
     const schools = STORE.get('schools').slice().sort((a, b) => a.name.localeCompare(b.name));
     const sRows = [['School', 'Coordinator', 'Teachers', 'Teacher names', 'Present today', 'Visits this month', 'Last visit', 'Geofence set']];
     schools.forEach((s) => {
-        const vs = STORE.get('feedback').filter((f) => f.school === s.id).map((f) => f.date).sort();
+        const vs = schoolVisitDates(s.id);
         sRows.push([s.name, s.mod, s.teachers.length, s.teachers.join(', '), presentToday(s.teachers), vs.filter((d) => d.startsWith(month)).length, vs[vs.length - 1] || '', s.lat != null ? 'Yes' : 'No']);
     });
     const tRows = [['School', 'Coordinator', 'Teacher', 'Full name', 'Grades', 'Education', 'Location', 'Lesson sessions to date', 'Done', 'Partly done', 'Not done', 'Not updated', '% done',
@@ -2597,13 +2594,16 @@ function reportCoords() {
     downloadXLSX(`robobox-coordinators-${todayStr()}.xlsx`, rows, 'Coordinators');
 }
 function reportVisits() {
-    const rows = [['Date', 'Coordinator', 'Teacher', 'School', 'Grade', 'Module', 'Students', 'Score', 'RAG', 'Improvement', 'Action', 'Action plan', 'Next visit', 'Arrived (verified)', 'Distance on arrival (m)', 'Submitted', 'Distance at submit (m)']];
+    const rows = [['Date', 'Coordinator', 'Teacher', 'School', 'Grade', 'Module', 'Students', 'Score', 'RAG', 'Improvement', 'Action', 'Action plan', 'Next visit', 'Checked in at', 'Distance at check-in (m)']];
     STORE.get('feedback').slice().sort((a, b) => a.date.localeCompare(b.date)).forEach((f) => {
-        var _a, _b;
+        var _a;
         rows.push([f.date, f.mod, f.teacher, schoolName(f.school), f.grade, f.module, f.students, f.score != null ? f.score.toFixed(2) : '', f.rag, f.judgement.improvement, f.judgement.action, f.actionPlan || '', f.nextVisit || '',
-            f.inAt ? fmtT(f.inAt) : '', (_a = f.inDist) !== null && _a !== void 0 ? _a : '', f.outAt ? fmtT(f.outAt) : '', (_b = f.outDist) !== null && _b !== void 0 ? _b : '']);
+            f.inAt ? fmtT(f.inAt) : '', (_a = f.inDist) !== null && _a !== void 0 ? _a : '']);
     });
-    downloadXLSX(`robobox-visits-${todayStr()}.xlsx`, rows, 'Visits');
+    const checkins = [['Date', 'Time reached', 'Coordinator', 'School', 'Distance from school (m)', 'Reviews written']];
+    STORE.get('modCheckins').slice().sort((a, b) => a.at.localeCompare(b.at)).forEach((c) => checkins.push([c.date, fmtT(c.at), c.mod, schoolName(c.school), c.dist,
+        STORE.get('feedback').filter((f) => f.mod === c.mod && f.school === c.school && f.date === c.date).length]));
+    downloadBook(`robobox-visits-${todayStr()}.xlsx`, [['Reviews', rows], ['School check-ins', checkins]]);
 }
 /* ================= views ================= */
 // Keyed by role:tab. A tab only renders if tabsFor(u) offers it, so permission-gated

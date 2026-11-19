@@ -19,7 +19,7 @@ interface Feedback {
   judgement: { independence: string; improvement: string; action: string };
   rag: RagKey; note: string; safety: boolean; score: number | null;
   actionPlan?: string; nextVisit?: string; // added later; older records may not have them
-  inAt?: string; inDist?: number; outAt?: string; outDist?: number; // geofence check when the form opened, and again at submit
+  inAt?: string; inDist?: number; // the coordinator's check-in at the school this review was written under
 }
 interface Leave { id?: string; teacher: string; mod?: string; type: string; from: string; to: string; reason: string; status: string; decidedBy?: string; decidedAt?: string; applicant?: 'mod'; }
 interface ReqLine { component: string; qty: number; }
@@ -46,6 +46,8 @@ interface Profile { id?: string; role: Role; name: string; fullName: string; edu
 interface Member { id?: string; role: 'teacher' | 'mod'; name: string; schools: string[]; grades: string[]; phone?: string; addedBy: string; createdAt: string; }
 // A coordinator's reason for visiting fewer schools than their monthly target (1 visit per school per month).
 interface VisitReason { id?: string; mod: string; month: string; done: number; target: number; reason: string; at: string; }
+// A coordinator arriving at a school: geofenced, it records the date and time she reached it. Reviews open only after it.
+interface ModCheckin { id?: string; mod: string; school: string; date: string; at: string; dist: number; }
 interface Password { id?: string; key: string; hash: string; }
 interface VisitPlan { id?: string; mod: string; school: string; date: string; note?: string; teacher?: string; status: 'Planned' | 'Done'; }
 
@@ -55,7 +57,7 @@ interface Collections {
   attendance: Attendance[]; feedback: Feedback[]; leaves: Leave[];
   requests: Requisition[]; tasks: Task[]; materials: Material[]; plans: VisitPlan[];
   notices: Notice[]; holidays: Holiday[]; events: SchoolEvent[];
-  lessons: LessonPlan[]; planUpdates: PlanUpdate[]; profiles: Profile[]; passwords: Password[]; members: Member[]; visitReasons: VisitReason[];
+  lessons: LessonPlan[]; planUpdates: PlanUpdate[]; profiles: Profile[]; passwords: Password[]; members: Member[]; visitReasons: VisitReason[]; modCheckins: ModCheckin[];
 }
 
 interface Kit { id: string; name: string; items: [string, number | string][]; } // [component, standard kit qty]

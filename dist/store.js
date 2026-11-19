@@ -2,13 +2,13 @@
 const STORE = (() => {
     const K = 'robobox_tep_v1', KS = 'robobox_tep_sync';
     const SYNCED = ['schools', 'attendance', 'feedback', 'leaves', 'requests', 'tasks', 'materials', 'plans',
-        'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles', 'members', 'visitReasons'];
+        'notices', 'holidays', 'events', 'lessons', 'planUpdates', 'profiles', 'members', 'visitReasons', 'modCheckins'];
     function seedDb() {
         const copy = (x) => JSON.parse(JSON.stringify(x));
         return {
             schools: copy(SEED.schools), teachers: SEED.teachers, moderators: SEED.moderators,
             attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
-            notices: [], holidays: [], events: [], lessons: copy(SEED.lessons), planUpdates: [], profiles: [], passwords: [], members: [], visitReasons: [],
+            notices: [], holidays: [], events: [], lessons: copy(SEED.lessons), planUpdates: [], profiles: [], passwords: [], members: [], visitReasons: [], modCheckins: [],
         };
     }
     function load() {
@@ -33,6 +33,8 @@ const STORE = (() => {
         // and replace a pin when Robobox corrects that school's link.
         d.schools.forEach((s) => {
             const seed = SEED.schools.find((x) => x.id === s.id);
+            if (seed)
+                s.name = seed.name; // names come from the school sheet (e.g. NHPS Sec 3 / NHPS Sec 19)
             if (seed && seed.lat != null && (s.lat == null || s.mapLink !== seed.mapLink)) {
                 s.lat = seed.lat;
                 s.lng = seed.lng;
