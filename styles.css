@@ -431,3 +431,161 @@ details.loc>summary{list-style:none;cursor:pointer}details.loc>summary::-webkit-
 .loc-body{padding:0 16px 16px}
 .link-sum{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:14px;font-weight:650;color:var(--brand-ink)}
 .loc-body .btn-row{display:flex;flex-wrap:wrap;gap:8px}.loc-body .btn-row .btn{flex:1 1 auto;min-width:0;white-space:normal}
+
+/* =========================================================================
+   Robobox Connect look — same tokens, type, motion and components as the
+   Connect platform (mrhulka/Connect, assets/css/app.css), so the two feel
+   like one product. Charcoal carries structure, yellow is the one action,
+   red only means something is wrong. Kept last so it wins the cascade.
+   ========================================================================= */
+:root{
+  --bg:#F4F1EA; --surface:#FFFFFF; --surface-2:#FAF8F3; --sunken:#EFEBE2;
+  --ink:#23262C; --ink-2:#55595F; --muted:#737980; --line:#DCD5C6; --line-2:#ECE7DC; --hairline:rgba(35,38,44,.07);
+  --brand:#F2BE14; --brand-hover:#FFD84D; --brand-strong:#F2BE14; --brand-soft:#FDF3D2; --brand-ink:#23262C;
+  --red:#D3352A; --red-soft:#FDECEA; --amber:#8A6A00; --amber-soft:#FEF6DC; --amber-chart:#F2BE14;
+  --none:#D5D7DB;
+  --r-xl:22px; --r-lg:18px; --r:14px; --r-sm:12px;
+  --sh-1:0 1px 2px rgba(35,38,44,.04),0 6px 20px rgba(35,38,44,.05);
+  --sh-2:0 2px 6px rgba(35,38,44,.05),0 16px 36px rgba(35,38,44,.10);
+  --sh-3:0 6px 16px rgba(35,38,44,.08),0 28px 70px rgba(35,38,44,.18);
+  --glow:0 8px 22px rgba(242,190,20,.38); --ring:0 0 0 4px rgba(242,190,20,.30);
+  --ease:cubic-bezier(.22,1,.36,1); --t-press:110ms; --t-fast:180ms; --t-med:280ms; --t-slow:460ms;
+  --display:"Bricolage Grotesque","Inter",system-ui,sans-serif;
+}
+body{font:400 15px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg)}
+::selection{background:rgba(242,190,20,.35)}
+:focus-visible{outline:none;box-shadow:var(--ring),0 0 0 1.5px var(--brand)!important;border-radius:12px}
+h1,.section-title,.card-title,.stat-n,.cal-head b,.week-nav b,.login-title{font-family:var(--display);letter-spacing:-.03em}
+h1{font-size:30px;font-weight:700;line-height:1.05}
+@media (min-width:900px){h1{font-size:36px}}
+.page-head{margin:6px 0 20px}
+.section-title{font-size:19px;font-weight:650;letter-spacing:-.025em;margin:32px 2px 12px}
+.card-title{font-weight:650;font-size:17px}
+
+/* surfaces */
+.card,.stat{border:1px solid var(--hairline);box-shadow:var(--sh-1)}
+.card{border-radius:var(--r-xl)}
+@media (max-width:560px){.card{border-radius:20px}}
+.stat-n{font-weight:700}
+.stat-ic,.avatar{background:var(--brand);color:var(--brand-ink)}
+.stat-ic.amber{background:var(--tint,#FEF6DC);color:var(--amber)}
+.empty{background:var(--surface-2);border:1px dashed var(--line);border-radius:var(--r-lg);margin:4px 0}
+.card.list .empty{border:0;background:none}
+
+/* buttons: pills; yellow is the action, with its glow */
+.btn,.btn.sm,.chip{border-radius:999px;transition:background-color var(--t-fast) var(--ease),border-color var(--t-fast),color var(--t-fast),box-shadow var(--t-med) var(--ease),transform var(--t-press) var(--ease)}
+.btn{min-height:46px;font-weight:600;font-size:14.5px;box-shadow:var(--glow)}
+.btn:hover{background:var(--brand-hover)}
+.btn.sm{min-height:40px;font-size:13.5px;padding:0 15px}
+.btn.lg{min-height:54px;font-weight:650}
+.btn.ghost{background:var(--surface);border-color:var(--line);color:var(--ink);box-shadow:none}
+.btn.ghost:hover{background:var(--surface-2);border-color:var(--muted)}
+.btn.dark{background:var(--ink);color:#fff;box-shadow:none}.btn.dark:hover{background:#33373E}
+.btn.danger{background:var(--surface);color:var(--red);border-color:#F6C4BE;box-shadow:none}.btn.danger:hover{background:var(--red-soft);border-color:var(--red)}
+.btn:active,.chip:active{transform:scale(.97)}
+.icon-btn{border-radius:14px;border-color:var(--hairline);box-shadow:var(--sh-1);color:var(--ink-2);transition:background-color var(--t-fast),color var(--t-fast),transform var(--t-press) var(--ease)}
+.icon-btn:hover{color:var(--ink)}
+.chip.on{background:var(--ink);border-color:var(--ink)}
+.chip span{background:var(--brand);color:var(--brand-ink)}
+
+/* fields and date selection */
+input,select,textarea{border-color:var(--line);border-radius:14px;font-size:15px;transition:border-color var(--t-fast),box-shadow var(--t-fast)}
+input:hover:not(:focus),select:hover:not(:focus),textarea:hover:not(:focus){border-color:var(--muted)}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:var(--ring)}
+input[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--red);box-shadow:0 0 0 4px rgba(229,57,43,.12);animation:rb-shake 360ms ease}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+.field-l{font-size:13px;font-weight:600;color:var(--ink-2)}
+input[type=date],input[type=time]{cursor:pointer;font-variant-numeric:tabular-nums;font-weight:550;padding-right:14px}
+input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.55;padding:6px;border-radius:10px;transition:background-color var(--t-fast),opacity var(--t-fast)}
+input[type=date]::-webkit-calendar-picker-indicator:hover{opacity:1;background-color:var(--sunken)}
+.err:not(:empty){animation:rb-fade var(--t-med) var(--ease)}
+
+/* segmented controls */
+.segtabs{border-radius:999px;background:var(--sunken);gap:3px;scrollbar-width:none}
+.segtab{border-radius:999px;min-height:38px;font-size:13.5px;font-weight:600;color:var(--ink-2);transition:background-color var(--t-fast),color var(--t-fast),box-shadow var(--t-med),transform var(--t-press)}
+.segtab:active{transform:scale(.95)}
+.segtab.on{box-shadow:var(--sh-1)}
+.rate button{border-color:var(--line);border-radius:14px;transition:background-color var(--t-fast),border-color var(--t-fast),color var(--t-fast),transform var(--t-press) var(--ease)}
+.rate button.on{animation:rb-press-in var(--t-med) var(--ease)}
+
+/* top bar + desktop nav: frosted canvas; current place in charcoal with a yellow icon */
+.topbar{background:rgba(244,241,234,.78);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border-bottom-color:transparent}
+.topnav button{border-radius:14px;font-weight:550;color:var(--ink-2)}
+.topnav button:hover{background:var(--sunken)}
+.topnav button.on{background:var(--ink);color:#fff}
+.topnav button.on .i{color:var(--brand)}
+
+/* tab bar: frosted pill, monochrome icons, a soft capsule under the current tab */
+.tabbar{border-radius:999px;background:rgba(252,251,248,.86);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid rgba(255,255,255,.7);box-shadow:0 0 0 .5px rgba(35,38,44,.10),0 10px 30px rgba(35,38,44,.14),inset 0 1px 0 rgba(255,255,255,.8);max-width:440px}
+.tab{border-radius:999px;color:var(--ink-2);font-weight:600;transition:color var(--t-fast),transform var(--t-press) var(--ease)}
+.tab:active{transform:scale(.9)}
+.tab.on{background:rgba(35,38,44,.07);color:var(--ink)}
+.tab.on .i{color:var(--ink);stroke-width:2.4}
+.tab-badge{background:var(--red);box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+/* While typing, the keyboard is the bottom of the screen; the bar steps aside. Coming back it stays
+   untappable for a moment, so the tap that closed the keyboard lands on the page, not on the bar. */
+.tabbar{transition:opacity var(--t-fast),transform var(--t-med) var(--ease),visibility 0s linear 300ms}
+body:has(:is(input:not([type=checkbox]):not([type=date]):not([type=file]),textarea):focus) .tabbar{opacity:0;visibility:hidden;transform:translate(-50%,20px);transition:opacity var(--t-fast),transform var(--t-med) var(--ease),visibility 0s}
+
+/* calendars: day cells are small cards; today ringed in charcoal; the picked day is solid charcoal */
+.cal-grid{gap:6px}
+@media (max-width:420px){.cal-grid{gap:4px}}
+.cal-wk span{font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.cal-day{border:1px solid var(--line-2);background:var(--surface);border-radius:12px;font-weight:600;font-variant-numeric:tabular-nums;transition:background-color var(--t-fast),border-color var(--t-fast),transform var(--t-press) var(--ease)}
+.cal-day:hover{background:var(--surface-2);border-color:var(--line)}
+.cal-day:active{transform:scale(.94)}
+.cal-day.today{box-shadow:none;border-color:var(--ink);font-weight:750}
+.cal-day.sel{background:var(--ink);border-color:var(--ink);color:#fff;animation:rb-press-in var(--t-med) var(--ease)}
+.cal-day.sel .d-plan{background:var(--brand)}
+.cal-head .icon-btn{width:38px;height:38px;border-radius:12px;box-shadow:none}
+.att-day{border-radius:12px}
+.att-day.holiday{background:var(--brand);color:var(--brand-ink)}
+.att-day.today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.date-chip{background:var(--brand-soft);color:var(--ink);border-radius:14px}
+.date-chip b{font-family:var(--display)}
+.row-item.current .date-chip{background:var(--ink);color:#fff}
+
+/* badges as Connect tags */
+.badge{font-weight:650;font-size:12px;min-height:24px}
+.badge.brand{background:var(--brand);color:var(--brand-ink)}
+.badge.red{background:var(--red-soft);color:#B42318}
+.notice.brand{background:var(--brand-soft);color:var(--ink)}
+.notice.err{background:var(--red-soft);color:#8A1F17}
+
+/* toast: charcoal pill rising from the bottom */
+.toast{border-radius:999px;background:var(--ink);padding:12px 18px;box-shadow:var(--sh-3);animation:rb-toast-in var(--t-med) var(--ease)}
+.toast.ok .i{color:var(--brand)}
+.toast.err{background:var(--red)}.toast.err .i{color:#fff}
+
+/* page enter: content rises in, a beat apart */
+#main.enter>*{animation:rb-rise var(--t-slow) var(--ease) backwards}
+#main.enter>*:nth-child(2){animation-delay:40ms}#main.enter>*:nth-child(3){animation-delay:80ms}
+#main.enter>*:nth-child(4){animation-delay:120ms}#main.enter>*:nth-child(n+5){animation-delay:160ms}
+.reveal{animation:rb-pop var(--t-med) var(--ease)}
+details[open]>.loc-body{animation:rb-pop var(--t-med) var(--ease)}
+
+/* sign-in: warm yellow glow and a dot grid behind, like Connect */
+body:has(.login){background:radial-gradient(640px 520px at 88% -4%,rgba(242,190,20,.30),rgba(255,216,77,.10) 45%,transparent 72%),radial-gradient(560px 460px at -6% 104%,rgba(255,216,77,.16),transparent 70%),var(--bg);background-attachment:fixed}
+.login{animation:rb-rise var(--t-slow) var(--ease) backwards}
+.login>*{animation:rb-rise var(--t-slow) var(--ease) backwards}
+.login>*:nth-child(2){animation-delay:60ms}.login>*:nth-child(3){animation-delay:100ms}.login>*:nth-child(n+4){animation-delay:140ms}
+.role-card{border-color:var(--hairline);border-radius:var(--r-xl);box-shadow:var(--sh-1);transition:box-shadow var(--t-med) var(--ease),transform var(--t-press) var(--ease),border-color var(--t-fast)}
+.role-card:hover{box-shadow:var(--sh-2);transform:translateY(-1px)}
+.switch-row{border-color:var(--line);background:var(--surface-2)}
+
+/* progress bars grow in */
+/* only on arriving at a page — the app re-renders on every tap */
+#main.enter .stack span,#main.enter .bar span{transform-origin:left;animation:rb-grow var(--t-slow) var(--ease) .12s backwards}
+.prog+.prog{border-top-color:var(--line-2)}
+.selfie-btns{display:flex;flex-wrap:wrap;gap:8px}
+.selfie-pv{background:var(--brand-soft);color:var(--ink-2)}
+
+@keyframes rb-fade{from{opacity:0}}
+@keyframes rb-rise{from{opacity:0;transform:translateY(12px)}}
+@keyframes rb-pop{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+@keyframes rb-press-in{from{transform:scale(.94)}}
+@keyframes rb-toast-in{from{opacity:0;transform:translateY(16px) scale(.96)}}
+@keyframes rb-grow{from{transform:scaleX(0)}}
+@keyframes rb-shake{0%,100%{transform:none}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+@media (prefers-reduced-transparency:reduce){.topbar,.tabbar{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}

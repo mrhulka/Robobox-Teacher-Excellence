@@ -60,6 +60,7 @@ const ICONS: Record<string, string> = {
   pinI: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
   trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
   camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
   gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
   target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
 };
@@ -879,7 +880,7 @@ function goWeek(wk: string): void { LW = Math.round(dayDiff(weekOf(todayStr()), 
 function setPlanState(btn: HTMLElement, i: number, st: string): void {
   LPD[LPLANS[i].grade] = st; pickIn(btn); setErr('lpReasonErr', '');
   const req = Object.values(LPD).some((x) => x === 'Partly done' || x === 'Not done');
-  document.getElementById('lpReasonReq')?.toggleAttribute('hidden', !req);
+  document.getElementById('lpReasonBox')?.toggleAttribute('hidden', !req);
 }
 function tLessons(u: User): string {
   const cur = weekOf(todayStr()); const wk = addDays(cur, LW * 7);
@@ -906,8 +907,8 @@ function tLessons(u: User): string {
       <section class="card">
         ${plans.map((p, i) => `<div class="q"><div class="qt"><b>${esc(p.grade)}</b> · ${esc(p.topic)}</div>
           <div class="rate opts" role="group" aria-label="${esc(p.grade)} progress">${PLAN_STATES.filter((st) => !(p.teachers && st === 'Not my class')).map((st) => `<button class="${st === 'Done' ? 'yes' : st === 'Not done' ? 'no' : ''}${LPD[p.grade] === st ? ' on' : ''}" onclick="setPlanState(this,${i},'${st}')">${st}</button>`).join('')}</div></div>`).join('')}
-        <label class="field-l" for="lpReason">Reason <span class="req-tag" id="lpReasonReq"${reasonReq ? '' : ' hidden'}>Required</span></label>
-        <textarea id="lpReason" rows="3" placeholder="Only needed if something was partly done or not done">${esc(ups[0]?.reason || '')}</textarea>
+        <div id="lpReasonBox" class="reveal"${reasonReq ? '' : ' hidden'}><label class="field-l" for="lpReason">What got in the way? <span class="req-tag">Required</span></label>
+          <textarea id="lpReason" rows="3" placeholder="e.g. Exams took the period on Thursday">${esc(ups[0]?.reason || '')}</textarea></div>
         <p class="err" id="lpReasonErr" role="alert"></p>
         <button class="btn block" onclick="submitPlanUpdate()">${ic('check', 18)}${ups.length ? 'Update progress' : 'Submit weekly update'}</button>
         <p class="hint">${ups.length ? `Last updated ${fmtD(ups[0].at)}${ups[0].late ? ' — after the deadline' : ''}.` : `Due ${fmtLong(weekDue(wk))}.`}</p>
@@ -934,8 +935,9 @@ function submitPlanUpdate(): void {
   if (missing.length) { setErr('lpReasonErr', `Choose a status for ${missing.map((p) => p.grade).join(', ')}.`); return; }
   const prev = planUpdatesOf(u.name, wk);
   const late = !prev.some((x) => !x.late) && todayStr() > weekDue(wk); // editing an on-time update stays on time
-  const reason = $('lpReason').value.trim();
-  if (LPLANS.some((p) => LPD[p.grade] === 'Partly done' || LPD[p.grade] === 'Not done') && reason.length < 5) {
+  const needsReason = LPLANS.some((p) => LPD[p.grade] === 'Partly done' || LPD[p.grade] === 'Not done');
+  const reason = needsReason ? $('lpReason').value.trim() : '';
+  if (needsReason && reason.length < 5) {
     setErr('lpReasonErr', 'Add a reason for what was partly done or not done.'); $('lpReason').focus(); return;
   }
   prev.forEach((x) => STORE.remove('planUpdates', x.id!));
@@ -1041,7 +1043,7 @@ async function pickSelfie(input: HTMLInputElement): Promise<void> {
     const c = document.createElement('canvas'); c.width = c.height = S;
     c.getContext('2d')!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, S, S);
     PF_SELFIE = c.toDataURL('image/jpeg', 0.8);
-    document.getElementById('pfPreview')!.innerHTML = `<img src="${PF_SELFIE}" alt="Your selfie">`; setErr('pfPhotoErr', '');
+    document.getElementById('pfPreview')!.innerHTML = `<img src="${PF_SELFIE}" alt="Your photo">`; setErr('pfPhotoErr', '');
   } catch (e) { setErr('pfPhotoErr', 'Couldn’t read that photo — try again.'); }
 }
 function profileView(u: User, gate: boolean): string {
@@ -1052,11 +1054,12 @@ function profileView(u: User, gate: boolean): string {
   return (gate ? '' : backLink('Back', 'closeProfile()')) +
     pageHead('My profile', gate ? `Welcome, ${esc(titleCase(u.name))}. Complete your profile to start using the portal — it takes a minute.` : 'Keep your details up to date.') +
     `<section class="card">
-      <span class="field-l">Selfie</span>
-      <div class="selfie"><span class="selfie-pv" id="pfPreview">${PF_SELFIE ? `<img src="${PF_SELFIE}" alt="Your selfie">` : ic('camera', 32)}</span>
-        <div><button class="btn ghost sm" onclick="$('pfPhoto').click()">${ic('camera', 16)}${PF_SELFIE ? 'Retake selfie' : 'Take a selfie'}</button>
-          <p class="hint">A clear photo of your face, for your coordinator and Robobox.</p></div></div>
-      <input type="file" id="pfPhoto" accept="image/*" capture="user" hidden onchange="pickSelfie(this)"><p class="err" id="pfPhotoErr" role="alert"></p>
+      <span class="field-l">Photo</span>
+      <div class="selfie"><span class="selfie-pv" id="pfPreview">${PF_SELFIE ? `<img src="${PF_SELFIE}" alt="Your photo">` : ic('camera', 32)}</span>
+        <div class="selfie-btns"><button class="btn ghost sm" onclick="$('pfCam').click()">${ic('camera', 16)}Take a selfie</button>
+          <button class="btn ghost sm" onclick="$('pfPhoto').click()">${ic('image', 16)}Choose from library</button></div></div>
+      <input type="file" id="pfCam" accept="image/*" capture="user" hidden onchange="pickSelfie(this)">
+      <input type="file" id="pfPhoto" accept="image/*" hidden onchange="pickSelfie(this)"><p class="err" id="pfPhotoErr" role="alert"></p>
       ${field('pfName', 'Full name', p?.fullName || titleCase(u.name), 'autocomplete="name" placeholder="First and last name"')}
       ${field('pfEdu', 'Education', p?.education || h.education || '', 'placeholder="e.g. B.Tech, Electronics"')}
       ${field('pfBday', 'Birthday', p?.birthday || '', `type="date" max="${todayStr()}"`)}
@@ -1070,7 +1073,7 @@ function saveProfile(): void {
   const f = { fullName: val('pfName'), education: val('pfEdu'), birthday: $('pfBday').value, location: val('pfLoc'), selfie: PF_SELFIE };
   const age = f.birthday ? dayDiff(f.birthday, todayStr()) / 365.25 : 0;
   const errs: [string, string][] = [
-    ['pfPhoto', f.selfie ? '' : 'Take a selfie — it’s required.'],
+    ['pfPhoto', f.selfie ? '' : 'A photo is required — take a selfie or choose one from your library.'],
     ['pfName', f.fullName.length >= 2 ? '' : 'Enter your full name.'],
     ['pfEdu', f.education ? '' : 'Enter your highest qualification.'],
     ['pfBday', !f.birthday ? 'Enter your date of birth.' : age < 16 || age > 80 ? 'Check the year — that date gives an age outside 16–80.' : ''],

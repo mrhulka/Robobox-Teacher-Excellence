@@ -28,8 +28,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/uh1CFmXN2uJqX8ceA?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.119622,
+            "lng": 72.884369,
             "teachers": [
                 "SRIVALLI"
             ]
@@ -40,8 +40,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/hpL12YF6gnYPGvss8?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.224255,
+            "lng": 72.968391,
             "teachers": [
                 "KHUSHI",
                 "MANISHA I."
@@ -53,8 +53,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/ciddMtz4MKnXedFBA?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.212755,
+            "lng": 72.974662,
             "teachers": [
                 "KHUSHI",
                 "MANISHA I."
@@ -66,8 +66,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/yZadJytyGbrEJ9oY6?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.301748,
+            "lng": 72.863694,
             "teachers": [
                 "RAHUL"
             ]
@@ -78,8 +78,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/Ng4vfqf54iW4doW99?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.283365,
+            "lng": 72.87916,
             "teachers": [
                 "BHAVIKA",
                 "DURVA"
@@ -91,8 +91,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/K5sbMeNxSps1n6ws5?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.11557,
+            "lng": 72.937323,
             "teachers": [
                 "JITU",
                 "PRACHI"
@@ -104,8 +104,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/btmSj3poJqUL5EdV6?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.158929,
+            "lng": 72.993416,
             "teachers": [
                 "DAKSHATA",
                 "RIGVEDI"
@@ -117,8 +117,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/hszp6dKrDXimzbVEA?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.160291,
+            "lng": 72.995633,
             "teachers": [
                 "DAKSHATA"
             ]
@@ -129,8 +129,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/4sCfNDZTsZSs1dVj8?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.168065,
+            "lng": 72.939398,
             "teachers": [
                 "PRATIKSHA",
                 "ANJALI"
@@ -142,8 +142,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/cgzyUJ92Y9zzY64w8?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.052394,
+            "lng": 73.077562,
             "teachers": [
                 "PRADNYA",
                 "JAGRUTI G"
@@ -155,8 +155,8 @@ const SEED = {
             "mod": "APARNA",
             "mapLink": "https://maps.app.goo.gl/qByi678qXRxBEfGY7?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.025946,
+            "lng": 73.091576,
             "teachers": [
                 "SNEHAL B",
                 "JAGRUTI G"
@@ -168,8 +168,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/qByi678qXRxBEfGY7?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 18.916335,
+            "lng": 72.819612,
             "teachers": [
                 "Ashwini",
                 "Divyashree"
@@ -181,8 +181,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/fr4ptPDzAWTW8xY19?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.044515,
+            "lng": 72.893697,
             "teachers": [
                 "Mahalaxmi",
                 "Pragati"
@@ -194,8 +194,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/NuuSujUgvRC5mDav9?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.074859,
+            "lng": 72.90077,
             "teachers": [
                 "Sharvi",
                 "Sakshi J"
@@ -207,8 +207,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/mTwctMrRm6X9v9fr6?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.209292,
+            "lng": 72.874755,
             "teachers": [
                 "Manisha D",
                 "Mansi"
@@ -220,8 +220,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/c2AwDqudYYqrNnoEA?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.204353,
+            "lng": 72.836171,
             "teachers": [
                 "Meryl"
             ]
@@ -232,8 +232,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/41gE5brMjniKt6NT8?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.115773,
+            "lng": 72.905327,
             "teachers": [
                 "Suraj",
                 "Swamini",
@@ -247,8 +247,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/t7KzENnnPfdfTRxLA?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 18.484965,
+            "lng": 73.955049,
             "teachers": [
                 "Asmita",
                 "Nikita"
@@ -260,8 +260,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/DVScVtGEHfKEQYWL8?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 18.554874,
+            "lng": 73.961349,
             "teachers": [
                 "Aarya",
                 "Sumedha",
@@ -274,8 +274,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/zgpnKnexhoQKVr3eA?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 18.675198,
+            "lng": 73.87817,
             "teachers": [
                 "Urvi",
                 "Rutuja",
@@ -290,8 +290,8 @@ const SEED = {
             "mod": "Madhura",
             "mapLink": "https://maps.app.goo.gl/HnZpJ6kXKiy8HkWx5?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 18.599276,
+            "lng": 73.77036,
             "teachers": [
                 "Hetal",
                 "Vinaya",
@@ -306,8 +306,8 @@ const SEED = {
             "mod": "Manisha",
             "mapLink": "https://maps.app.goo.gl/8bsYBq19QjBa5aUZ8?g_st=iwb",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.161974,
+            "lng": 73.223233,
             "teachers": [
                 "Manisha"
             ]
@@ -318,8 +318,8 @@ const SEED = {
             "mod": "Manisha",
             "mapLink": "https://maps.app.goo.gl/QTqBVnyP9MQQR7vq9?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.217344,
+            "lng": 73.084221,
             "teachers": [
                 "Vighnesh",
                 "Shilpa",
@@ -332,8 +332,8 @@ const SEED = {
             "mod": "Manisha",
             "mapLink": "https://maps.app.goo.gl/ZWrZWchEXitXmBww5?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.208589,
+            "lng": 73.104533,
             "teachers": [
                 "Seema",
                 "Meet",
@@ -347,8 +347,8 @@ const SEED = {
             "mod": "Manisha",
             "mapLink": "https://maps.app.goo.gl/nD1vaPcrsJcgz2jKA",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.207615,
+            "lng": 73.103778,
             "teachers": [
                 "Simaran",
                 "Roshani",
@@ -361,8 +361,8 @@ const SEED = {
             "mod": "Manisha",
             "mapLink": "https://maps.app.goo.gl/g44j3rXNujzw19pz5",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.22223,
+            "lng": 73.102135,
             "teachers": [
                 "Shubhra",
                 "Manisha P"
@@ -374,8 +374,8 @@ const SEED = {
             "mod": "Manisha",
             "mapLink": "https://maps.app.goo.gl/XWXZ3ovGjdQ8D8Ct9?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.188101,
+            "lng": 73.137415,
             "teachers": [
                 "Bharati",
                 "Sudha"
@@ -387,8 +387,8 @@ const SEED = {
             "mod": "Manisha",
             "mapLink": "https://maps.app.goo.gl/9HTwigCVLaJUUN956?g_st=aw",
             "locNote": "",
-            "lat": null,
-            "lng": null,
+            "lat": 19.251088,
+            "lng": 73.150927,
             "teachers": [
                 "Tejaswini"
             ]

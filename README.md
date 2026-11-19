@@ -29,6 +29,13 @@ view functions are globals, so the generated HTML's inline `on*` handlers resolv
 no module graph, no build tooling beyond `tsc`. Load order (set in `index.html`):
 `seed → config → store → app`.
 
+## Design
+Matches the **Robobox Connect** platform (`mrhulka/Connect`): same tokens (charcoal `#23262C` + yellow
+`#F2BE14` on paper `#F4F1EA`, red only for problems), Bricolage Grotesque / Inter, pill buttons with the
+yellow glow, frosted top bar and floating tab bar, calendar day-cells (today ringed, picked day charcoal),
+and the same motion curve and keyframes (`rb-rise`, `rb-pop`, `rb-shake`…). It's the last block of
+`styles.css`; respects reduced motion and reduced transparency.
+
 ## Roles & permissions
 | Sign-in | What they get | Sees scores? |
 |---------|---------------|--------------|
@@ -43,9 +50,9 @@ Leadership names, who is "top" and who sees profiles (`profiles: true`, Parth) l
 
 ## My profile & birthdays
 Every user can open **My profile** by tapping their name in the top bar. For **teachers and coordinators it is
-compulsory**: until a **selfie**, full name, education, birthday and location are saved, the app shows only the profile form.
+compulsory**: until a **photo** (a selfie or one from the phone's library), full name, education, birthday and location are saved, the app shows only the profile form.
 Education and location are prefilled for the 37 teachers listed in `TEACHERS.xlsx` (training sheet) — they just
-check, add their birthday and take a selfie. The selfie is cropped and shrunk on the phone (320 px JPEG,
+check, add their birthday and a photo. The photo is cropped and shrunk on the phone (320 px JPEG,
 ~20 KB) and shows as their avatar for coordinators and Parth. Coordinators see their teachers' upcoming birthdays on *My teachers*, as pink dots
 on the *Calendar*, and each teacher's profile on their detail page. Parth sees birthdays on the Overview, and
 *Teachers → Profiles* holds the whole repository (completion count, missing profiles, birthday calendar for the
@@ -65,7 +72,7 @@ rows directly. Columns: `Date or week · Batch or grade · Topic · Activity`; a
 replaces that session, so re-uploading the edited current-plans file updates in place. The `.xlsx` reader is built
 in (no library; first sheet only; dates typed in Excel are understood). A batch name inherits
 that batch's teachers and trainer; a grade applies to everyone. Teachers mark each session *Done /
-Partly done / Not done* by Saturday; a reason is required only for *Partly done* or *Not done* (late updates
+Partly done / Not done* by Saturday; the reason box appears only for *Partly done* or *Not done* (late updates
 are still flagged "Updated late"). **Progress bars** (done / partly / not done / not updated) for the week and
 the month are shown to the teacher (Lessons), the coordinator (My teachers + each teacher's page) and on
 *Teachers → Lesson plans* for leadership (all teachers + per coordinator). Coordinators and leadership see who updated; a week counts only if its plan was published
@@ -101,8 +108,11 @@ School locations*) or by Parth/Manish (*Coordinators → School locations*): pas
 link** (or `lat, lng`) — `parseLatLng()` reads the place pin from it — or stand at the gate and tap *Use my
 current location*. Each school shows an embedded Google Map (no API key needed) and teachers see their school
 on the map with directions. **Teachers can't set a pin**: check-in at a school without one is refused.
-`maps.app.goo.gl` short links (as in the school sheet) can't be read inside a browser; open the link and copy
-the full address-bar link instead.
+The sheet's `maps.app.goo.gl` short links were resolved once to coordinates and are built into `seed.ts`
+(28 of 29 schools). **HARMONY is unset**: its sheet link points to G. D. Somani Memorial School (Cuffe Parade),
+which is now G D Somani's pin (G D Somani's own link was a copy of RIS's). Paste HARMONY's correct link to set it.
+**Ideal** resolved to "Ideal College of Pharmacy" (Dwarli, Malang Gad Rd) — confirm it's the school's campus.
+Short links can't be read inside a browser; to change a pin, open the link and paste the full address-bar link.
 
 ## Data
 Seeded from the uploaded School–Teacher sheet (29 schools, 61 teachers, 3 coordinators) and
