@@ -70,5 +70,41 @@
     // Local-date formatting (kept in sync with app.ts isoLocal): no UTC day shift.
     const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     ok(isoLocal(new Date(2026, 9, 29, 0, 30)) === '2026-10-29', 'just after local midnight stays the same day');
+    // Lesson-plan week parsing (kept in sync with app.ts parseWeek; ayStart = Monday 2026-06-15).
+    const P = (d) => new Date(d + 'T00:00');
+    const L = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const add = (iso, n) => { const d = P(iso); d.setDate(d.getDate() + n); return L(d); };
+    const weekOf = (iso) => { const d = P(iso); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return L(d); };
+    const parseWeek = (raw) => {
+        const s = raw.trim();
+        let m;
+        let iso = '';
+        if ((m = s.match(/^(?:week\s*)?(\d{1,2})$/i)))
+            return add(weekOf('2026-06-15'), (Number(m[1]) - 1) * 7);
+        if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)))
+            iso = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+        else if ((m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/)))
+            iso = `${m[3].length === 2 ? '20' + m[3] : m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+        else {
+            const t = Date.parse(s.replace(/-/g, ' '));
+            if (!isNaN(t))
+                iso = L(new Date(t));
+        }
+        if (!iso)
+            return null;
+        const [y, mo, d] = iso.split('-').map(Number);
+        const dt = new Date(y, mo - 1, d);
+        return dt.getMonth() === mo - 1 && dt.getDate() === d ? weekOf(iso) : null;
+    };
+    ok(parseWeek('Week 1') === '2026-06-15' && parseWeek('3') === '2026-06-29', 'week numbers count from AY start');
+    ok(parseWeek('2026-11-19') === '2026-11-16', 'ISO date → its Monday');
+    ok(parseWeek('19/11/2026') === '2026-11-16', 'dd/mm/yyyy is day-first');
+    ok(parseWeek('17 Nov 2026') === '2026-11-16' && parseWeek('17-Nov-2026') === '2026-11-16', 'month-name dates');
+    ok(parseWeek('31/02/2026') === null && parseWeek('Topic') === null, 'invalid dates rejected');
+    // Operations KPI: turnaround days and share within the SLA (kept in sync with app.ts opsKpi).
+    const sla = 3, days = (a, b) => Math.round((P(b).getTime() - P(a).getTime()) / 86400000);
+    const done = [['2026-11-02', '2026-11-04'], ['2026-11-02', '2026-11-09'], ['2026-11-10', '2026-11-13']].map(([a, b]) => days(a, b));
+    ok(done.join() === '2,7,3', 'turnaround days');
+    ok(Math.round((100 * done.filter((d) => d <= sla).length) / done.length) === 67, 'share fulfilled within SLA');
     console.log('selfcheck OK');
 })();

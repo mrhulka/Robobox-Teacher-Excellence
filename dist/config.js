@@ -2,12 +2,14 @@
 // Feedback form spec (from Robobox Teacher Visit & Feedback Form) + RAG config.
 // Classic script: CONFIG is a global shared with the other scripts.
 const CONFIG = {
-    geofenceMeters: 200,
+    geofenceMeters: 100,
     expectedStart: '08:00', // school reporting time; lateness is measured from here. Per-school if timings vary.
-    opsEmail: '', // Operations team inbox for component requests — fill in to pre-address the email.
+    opsSlaDays: 3, // ponytail: target days from request to fulfilment for the Operations KPI — confirm with Robobox.
+    workDays: [1, 2, 3, 4, 5], // Mon–Fri (0 = Sunday). Days outside this are never counted as absent.
+    ayStart: '2026-06-15', // Monday of 'Week 1' when lesson plans are numbered by week — confirm the AY start.
     leaders: [
         { name: 'Parth', title: 'CEO', top: true },
-        { name: 'Manish', title: 'Head, Teacher Network', top: true, comms: true },
+        { name: 'Manish', title: 'Head, Teacher Network', top: true },
         { name: 'Outsight', title: 'Outsight team', top: false },
     ],
     // Live project kits — from Robobox_Kits.xlsx, sheet 'ROBOBOX KIT'. [component, standard kit qty]

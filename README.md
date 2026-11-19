@@ -30,42 +30,53 @@ no module graph, no build tooling beyond `tsc`. Load order (set in `index.html`)
 `seed → config → store → app`.
 
 ## Roles & permissions
-| Role | What they get | Can see scores? |
-|------|---------------|-----------------|
-| **Teacher** | Geofenced check-in/out (can check in at one school, out at another), attendance with weekly/monthly delay from 08:00, leave applications, component requests by project, tasks, school events, official updates, library. | **No** — teachers never see their own scores or RAG. |
-| **Coordinator** | Their teachers only: scores + trend + action plans, geofenced classroom visits → feedback form (action plan + next visit date required; the follow-up is added to their calendar), monthly calendar, teacher leave (read-only), component requests → Excel download + email to operations, library. | Their teachers' scores — **not** their own coordinator score. |
-| **Parth (CEO) / Manish** | Network overview, all teachers, coordinator scores, **leave approvals**, CSV reports, library. | Everything. |
-| **Outsight** | Network overview, all teachers, teacher CSV reports, library. | Teacher scores — not coordinator scores. |
+| Sign-in | What they get | Sees scores? |
+|---------|---------------|--------------|
+| **Teacher** | Geofenced check-in/out (100 m; can check in at one school, out at another), weekly **lesson plans** with progress updates, attendance calendar (present / late / absent / leave / holiday) + leave, component requests with delivery tracking, school events, updates. | **No** |
+| **Coordinator** | Their teachers only: scores, trend, action plans, lesson-plan compliance; geofenced visits → feedback form (action plan + next visit required, follow-up added to the calendar); calendar; **own leave** + their teachers' leave (view only); school events on the dashboard; updates. | Their teachers' — not their own |
+| **Parth (CEO) / Manish** | Overview (incl. Operations KPI and school events), all teachers, coordinator scores, **leave approvals for teachers and coordinators**, lesson-plan loading, reports. | Everything |
+| **Outsight** | Overview, all teachers, reports, updates. | Teacher scores only |
+| **Operations** | All component requests: confirm an expected date (the teacher sees it), mark fulfilled, Excel export, fulfilment KPI. | No |
+| **HR** | Publishes official updates, the holiday list and the library (handbook). | No |
 
-Leadership names and who is "top" (sees coordinator scores, approves leave) live in `CONFIG.leaders`.
+Leadership names and who is "top" live in `CONFIG.leaders`. Operations and HR are one shared sign-in each.
+
+## Lesson plans
+Plans are per **grade per week** (`LessonPlan`). Parth or Manish load them on *Teachers → Lesson plans*
+by pasting rows copied from Excel — `Week · Grade · Topic · Activity` (an Excel template is provided).
+"Week" is a week number counted from `CONFIG.ayStart` or any date in that week (`dd/mm/yyyy` is read
+day-first). Teachers mark each grade *Done / Partly done / Not done / Not my class* by Saturday; a
+reason is required for anything not done and for any late update. Coordinators and leadership see who
+updated; a week counts only if its plan was published before that week's Saturday.
 
 ## Component requests
-Projects and their components come from `Robobox_Kits.xlsx` (sheet "ROBOBOX KIT") and live in
-`CONFIG.kits` — 4 live projects: CGA, CBT, RA, Robotics Kit. A teacher picks a project, sets
-quantities, and gets a reference (`REQ-yymmdd-NNN`) as acknowledgement. The coordinator downloads
-new requests as an Excel `.xlsx` file (one row per component), emails operations (set
-`CONFIG.opsEmail` to pre-address it), and marks requests *Sent to Ops* → *Fulfilled*; the
-teacher sees each status change. To add a project, add it to `CONFIG.kits`.
+Projects and components come from `Robobox_Kits.xlsx` (sheet "ROBOBOX KIT") in `CONFIG.kits`. A teacher
+picks a project and quantities and gets a `REQ-yymmdd-NNN` reference. Requests go to **Operations**, who
+confirm an expected date (shown to the teacher with an optional note) and mark them fulfilled; the
+teacher sees *placed → expected by → fulfilled (N days)*. The Operations KPI — average days to fulfil,
+share within `CONFIG.opsSlaDays` (default 3), expected dates kept, open/overdue — is shown to Operations
+and on the leadership overview.
 
 ## Updates tab (every role)
-- **Official** — communications and the yearly holiday list, published by Manish (`comms: true` in
-  `CONFIG.leaders`). Updates can be pinned and carry an attachment (≤20 MB). Everyone else reads;
-  new updates show a dot on the Updates tab until opened. Holidays also appear on coordinators'
+- **Official** — communications and the yearly holiday list, published by **HR**. Updates can be pinned and carry an attachment (≤20 MB). Everyone else reads;
+  Holidays also appear on coordinators'
   calendars and on the teacher's home screen.
 - **School events** — teachers add exhibitions, PTAs, exams etc. for their own schools
   (`CONFIG.eventTypes`). Their coordinator sees them in Updates, on the calendar and on the Visit
   screen ("Today at your schools"); leadership sees all schools.
-- **Library** — handbook, curriculum and other resources.
+- **Library** — handbook, curriculum and other resources (published by HR).
+
+New updates and library items show a count bubble on the Updates tab until it is opened.
 
 ## Reports
 All downloads are real Excel `.xlsx` files (bold, frozen header; numbers stored as numbers), written
 in `downloadXLSX()` with no library — a single-sheet SpreadsheetML workbook in an uncompressed zip.
 
-## Geofence (200 m)
+## Geofence (100 m)
 Uses the browser's native Geolocation. A school's geofence centre is **captured on-site**
 the first time a teacher/coordinator acts there ("set to my current location") — this avoids
 resolving the Google Maps short-links in the sheet and is more accurate. Login/visit is
-allowed only within `CONFIG.geofenceMeters` (200 m).
+allowed only within `CONFIG.geofenceMeters` (100 m).
 
 ## Data
 Seeded from the uploaded School–Teacher sheet (29 schools, 61 teachers, 3 coordinators) and

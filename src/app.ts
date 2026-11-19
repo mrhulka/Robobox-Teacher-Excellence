@@ -17,6 +17,8 @@ const fmtD = (d?: string) => d ? parseD(d).toLocaleDateString([], { day: 'numeri
 const fmtLong = (d: string) => parseD(d).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
 const initials = (n: string) => n.split(/\s+/).map((x) => x[0]).join('').slice(0, 2).toUpperCase();
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+const dayDiff = (a: string, b: string) => Math.round((parseD(b).getTime() - parseD(a).getTime()) / 86400000);
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 /* ---------- icons (Lucide paths, inline SVG — no emoji, no icon font) ---------- */
 const ICONS: Record<string, string> = {
@@ -254,8 +256,11 @@ function leaveOn(name: string, date = todayStr()): Leave | undefined {
   return STORE.get('leaves').find((l) => l.teacher === name && l.status === 'Approved' && leaveCovers(l, date));
 }
 function reqLines(r: Requisition): ReqLine[] { return r.lines || (r.items ? [{ component: r.items, qty: r.qty || 1 }] : []); }
-// Older records used Open/Approved; show them in the current vocabulary.
-function reqStatus(r: Requisition): string { return r.status === 'Open' ? 'Submitted' : r.status === 'Approved' ? 'Sent to Ops' : r.status; }
+// Submitted → In progress (operations confirmed an expected date) → Fulfilled. Older Open/Approved/Sent to Ops records map in.
+function reqStatus(r: Requisition): string {
+  if (r.status === 'Fulfilled' || r.fulfilledAt) return 'Fulfilled';
+  return r.eta || ['Approved', 'Sent to Ops', 'In progress'].includes(r.status) ? 'In progress' : 'Submitted';
+}
 const kitOf = (id: string) => CONFIG.kits.find((k) => k.id === id);
 const kitLabel = (id: string) => { const k = kitOf(id); return k ? `${k.name} (${k.id})` : id; };
 function nextRef(): string {
@@ -290,6 +295,8 @@ function filterList(input: HTMLInputElement, containerId: string): void {
   const q = input.value.trim().toLowerCase();
   document.querySelectorAll(`#${containerId} [data-q]`).forEach((el) => { (el as HTMLElement).hidden = !!q && !((el as HTMLElement).dataset.q || '').includes(q); });
 }
+const segTabs = (label: string, cur: string, fn: string, items: [string, string, string][]) =>
+  `<div class="segtabs" role="tablist" aria-label="${label}">${items.map(([k, l, i]) => `<button role="tab" aria-selected="${cur === k}" class="segtab${cur === k ? ' on' : ''}" onclick="${fn}('${k}')">${ic(i, 16)}${l}</button>`).join('')}</div>`;
 const searchBox = (target: string, placeholder: string) =>
   `<div class="search">${ic('search', 18)}<input type="search" aria-label="${placeholder}" placeholder="${placeholder}" oninput="filterList(this,'${target}')"></div>`;
 function schoolsOfTeacher(t: Teacher): School[] { return (t.schools || []).map((id) => STORE.school(id)).filter((s): s is School => !!s); }
@@ -304,15 +311,17 @@ interface Tab { id: string; label: string; icon: string; short?: string; at?: 's
 // Max 5 bottom-nav items per role.
 function tabsFor(u: User): Tab[] {
   if (u.role === 'teacher') return [
-    { id: 'home', label: 'Home', icon: 'home' }, { id: 'att', label: 'Attendance', icon: 'clock', short: 'Attend', at: 'xs' },
-    { id: 'leave', label: 'Leave', icon: 'calx' }, { id: 'req', label: 'Requests', icon: 'package' },
+    { id: 'home', label: 'Home', icon: 'home' }, { id: 'lessons', label: 'Lessons', icon: 'book' },
+    { id: 'att', label: 'Attendance', icon: 'clock', short: 'Attend', at: 'xs' }, { id: 'req', label: 'Requests', icon: 'package' },
     { id: 'upd', label: 'Updates', icon: 'megaphone' },
   ];
   if (u.role === 'mod') return [
     { id: 'teachers', label: 'Teachers', icon: 'users' }, { id: 'visit', label: 'Visit', icon: 'pin' },
-    { id: 'cal', label: 'Calendar', icon: 'calendar' }, { id: 'req', label: 'Requests', icon: 'package' },
+    { id: 'cal', label: 'Calendar', icon: 'calendar' }, { id: 'leave', label: 'Leave', icon: 'calx' },
     { id: 'upd', label: 'Updates', icon: 'megaphone' },
   ];
+  if (u.role === 'ops') return [{ id: 'req', label: 'Requests', icon: 'package' }, { id: 'upd', label: 'Updates', icon: 'megaphone' }];
+  if (u.role === 'hr') return [{ id: 'upd', label: 'Updates', icon: 'megaphone' }];
   const t: Tab[] = [{ id: 'overview', label: 'Overview', icon: 'chart' }, { id: 'teachers', label: 'Teachers', icon: 'users' }];
   if (isTop(u)) t.push({ id: 'coords', label: 'Coordinators', icon: 'briefcase', short: 'Coords', at: 'sm' }, { id: 'leave', label: 'Leave', icon: 'calx' });
   t.push({ id: 'upd', label: 'Updates', icon: 'megaphone' });
@@ -337,10 +346,10 @@ function render(): void {
   if (!u) { app.innerHTML = viewLogin(); return; }
   const tabs = tabsFor(u);
   const active = tabs.some((t) => t.id === TAB[u.role]) ? TAB[u.role]! : tabs[0].id;
-  // Unread official updates → dot on the Updates tab (cleared once the Official section is opened).
-  const unread = active === 'upd' && UPD === 'official' ? 0 : unreadNotices(u);
-  const dot = (t: Tab) => t.id === 'upd' && unread ? `<span class="tab-dot" aria-hidden="true"></span><span class="sr-only">, ${unread} new</span>` : '';
-  const roleLabel = u.role === 'mod' ? 'Coordinator' : u.role === 'teacher' ? 'Teacher' : (leaderOf(u.name)?.title || 'Leadership');
+  // Count bubble on Updates for new HR posts and library items; cleared once Updates is opened.
+  const unread = active === 'upd' ? 0 : unreadUpdates(u);
+  const dot = (t: Tab) => t.id === 'upd' && unread ? `<span class="tab-badge" aria-hidden="true">${unread > 9 ? '9+' : unread}</span><span class="sr-only">, ${unread} new</span>` : '';
+  const roleLabel = ({ mod: 'Coordinator', teacher: 'Teacher', ops: 'Operations team', hr: 'Human resources' } as Record<string, string>)[u.role] || leaderOf(u.name)?.title || 'Leadership';
   app.innerHTML = `
     <header class="topbar">
       <img class="logo-img" src="assets/logo-mark.webp" width="75" height="28" alt="The Robobox">
@@ -351,7 +360,7 @@ function render(): void {
     <main class="wrap" id="main">${VIEWS[u.role + ':' + active](u)}</main>
     <nav class="tabbar" aria-label="Main">${tabs.map((t) => `<button class="tab${t.id === active ? ' on' : ''}${t.short ? ' s-' + t.at : ''}" ${t.short ? `aria-label="${t.label}"` : ''} ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 22)}<span class="lbl">${t.label}</span>${t.short ? `<span class="lbl-s" aria-hidden="true">${t.short}</span>` : ''}${dot(t)}</button>`).join('')}</nav>`;
 }
-function logout(): void { SESSION.clear(); SEL = null; VISIT = null; UPD = 'official'; const t = document.getElementById('toast'); if (t) t.innerHTML = ''; render(); }
+function logout(): void { SESSION.clear(); (Object.keys(TAB) as Role[]).forEach((k) => delete TAB[k]); SEL = null; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t) t.innerHTML = ''; render(); }
 
 /* ================= LOGIN ================= */
 let LOGIN: { role: Role | null } = { role: null };
@@ -363,9 +372,11 @@ function viewLogin(): string {
       <img class="logo-full" src="assets/logo.webp" width="260" height="123" alt="The Robobox — Teacher Excellence">
       <p class="login-sub">One Robobox classroom, delivered consistently.</p>
       <div class="role-list">
-        ${roleCard('teacher', 'cap', 'Teacher', 'Check in, leave, component requests')}
+        ${roleCard('teacher', 'cap', 'Teacher', 'Check in, lesson plans, leave, requests')}
         ${roleCard('mod', 'pin', 'Coordinator', 'Visits, action plans, teacher progress')}
         ${roleCard('ceo', 'shield', 'Leadership', 'Parth · Manish · Outsight')}
+        ${roleCard('ops', 'package', 'Operations', 'Component requests and fulfilment')}
+        ${roleCard('hr', 'megaphone', 'HR', 'Company updates, handbook, holidays')}
       </div>
       <label class="switch-row"><input type="checkbox" ${DEMO.on ? 'checked' : ''} onchange="toggleDemo(this)">
         <span><b>Demo mode</b><small>Simulates location so you can test without GPS. Turn off on a real device.</small></span></label>
@@ -390,7 +401,10 @@ function viewLogin(): string {
       <button class="btn block" onclick="doLogin('${LOGIN.role}')">Continue</button></div>
   </div>`;
 }
-function pickRole(r: Role): void { LOGIN = { role: r }; render(); }
+function pickRole(r: Role): void {
+  if (r === 'ops' || r === 'hr') { SESSION.set({ role: r, name: r === 'ops' ? 'Operations' : 'HR' }); LOGIN = { role: null }; render(); return; } // one shared login each
+  LOGIN = { role: r }; render();
+}
 function backToRoles(): void { LOGIN = { role: null }; render(); }
 function doLogin(role: Role): void {
   const name = $('who').value;
@@ -428,7 +442,8 @@ function tHome(u: User): string {
   const openReqs = STORE.get('requests').filter((r) => r.teacher === u.name && reqStatus(r) !== 'Fulfilled').length;
   const monthDays = teacherAtt(u.name).filter((a) => a.inTime && a.date.startsWith(todayStr().slice(0, 7))).length;
   return pageHead(`Hi, ${esc(cap(u.name.split(' ')[0].toLowerCase()))}`, fmtLong(todayStr())) +
-    (unreadNotices(u) ? `<button class="notice brand as-btn" onclick="openOfficial()">${ic('megaphone', 18)}<span><b>${unreadNotices(u)} new official update${unreadNotices(u) > 1 ? 's' : ''}</b> — tap to read</span></button>` : '') +
+    (unreadUpdates(u) ? `<button class="notice brand as-btn" onclick="openOfficial()">${ic('megaphone', 18)}<span><b>${plural(unreadUpdates(u), 'new update')}</b> from Robobox — tap to read</span></button>` : '') +
+    (overdueWeeks(u.name).length ? `<button class="notice err as-btn" onclick="goWeek('${overdueWeeks(u.name)[0]}')">${ic('alert', 18)}<span><b>Lesson plan update overdue</b> — week of ${fmtD(overdueWeeks(u.name)[0])}. Tap to update.</span></button>` : '') +
     (lv ? `<div class="notice info">${ic('calx', 18)}<span>You're on approved ${esc(lv.type.toLowerCase())} leave until ${fmtD(lv.to)}.</span></div>` : '') +
     `<section class="card checkin">
       <div class="checkin-status${open ? ' in' : ''}"><span class="status-dot" aria-hidden="true"></span><div>
@@ -457,24 +472,61 @@ function taskRow(x: Task, canComplete = true): string {
 }
 function markTask(id: string): void { STORE.update('tasks', id, { status: 'Done', doneAt: new Date().toISOString() }); flash('ok', 'Task marked done.'); render(); }
 
+let ATS = 'status'; let ATM = 0; // attendance section + month offset
+function setAts(k: string): void { ATS = k; render(); }
+function atNav(d: number): void { ATM += d; render(); }
+type DayState = 'present' | 'late' | 'absent' | 'leave' | 'holiday' | 'off' | 'none';
+const DAY_LABEL: Record<DayState, string> = { present: 'Present', late: 'Late', absent: 'Absent', leave: 'On leave', holiday: 'Holiday', off: 'Weekly off', none: '' };
+function dayState(name: string, iso: string, first: string): DayState {
+  const rec = STORE.get('attendance').find((a) => a.teacher === name && a.date === iso && a.inTime);
+  if (rec) return rec.inLate ? 'late' : 'present';
+  if (STORE.get('holidays').some((h) => h.date === iso)) return 'holiday';
+  if (leaveOn(name, iso)) return 'leave';
+  if (!CONFIG.workDays.includes(parseD(iso).getDay())) return 'off';
+  // ponytail: absences count only from the teacher's first check-in in the app (not before rollout), never for today.
+  return first && iso >= first && iso < todayStr() ? 'absent' : 'none';
+}
 function tAttendance(u: User): string {
-  const recs = teacherAtt(u.name);
-  return pageHead('Attendance', `Reporting time ${CONFIG.expectedStart} — delay is counted from here.`) +
-    `<div class="kpis three">
+  return pageHead('Attendance', `Reporting time ${CONFIG.expectedStart} · check in within ${CONFIG.geofenceMeters} m of school.`) +
+    segTabs('Attendance', ATS, 'setAts', [['status', 'My attendance', 'calendar'], ['leave', 'Leave', 'calx']]) +
+    (ATS === 'leave' ? leaveSection(u) : attStatus(u));
+}
+function attStatus(u: User): string {
+  const recs = teacherAtt(u.name); const first = recs.length ? recs[recs.length - 1].date : ''; const today = todayStr();
+  const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + ATM);
+  const y = base.getFullYear(), m = base.getMonth(); const dim = new Date(y, m + 1, 0).getDate(); const lead = (base.getDay() + 6) % 7;
+  const counts: Record<string, number> = {}; const cells: string[] = [];
+  for (let i = 0; i < lead; i++) cells.push('<span class="cal-pad"></span>');
+  for (let d = 1; d <= dim; d++) {
+    const iso = isoLocal(new Date(y, m, d)); const st: DayState = iso > today ? 'none' : dayState(u.name, iso, first);
+    counts[st] = (counts[st] || 0) + 1;
+    cells.push(`<span class="att-day ${st}${iso === today ? ' today' : ''}" role="img" aria-label="${fmtLong(iso)}${DAY_LABEL[st] ? ': ' + DAY_LABEL[st] : ''}">${d}</span>`);
+  }
+  const prefix = `${y}-${String(m + 1).padStart(2, '0')}`; const monthRecs = recs.filter((a) => a.date.startsWith(prefix));
+  return `<section class="card cal">
+      <div class="cal-head"><button class="icon-btn" aria-label="Previous month" onclick="atNav(-1)">${ic('chevL')}</button>
+        <b>${base.toLocaleDateString([], { month: 'long', year: 'numeric' })}</b>
+        <button class="icon-btn" aria-label="Next month" onclick="atNav(1)"${ATM >= 0 ? ' disabled' : ''}>${ic('chevR')}</button></div>
+      <div class="cal-grid cal-wk">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((w) => `<span>${w}</span>`).join('')}</div>
+      <div class="cal-grid">${cells.join('')}</div>
+      <div class="att-legend">${(['present', 'late', 'absent', 'leave', 'holiday'] as DayState[]).map((st) => `<span><i class="att-day ${st}"></i><b>${counts[st] || 0}</b>${DAY_LABEL[st]}</span>`).join('')}</div>
+    </section>
+    <div class="kpis three">
       ${kpi('Avg delay · this week', avgLateWindow(u.name, 'week') + ' min', 'clock')}
       ${kpi('Avg delay · this month', avgLateWindow(u.name, 'month') + ' min', 'calendar')}
       ${kpi('Avg delay · all time', avgLate(u.name) + ' min', 'chart')}
     </div>
-    <div class="card flush">${recs.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Delay</th><th>School</th></tr></thead><tbody>
-      ${recs.map((a) => `<tr><td>${fmtD(a.date)}</td><td class="num">${fmtT(a.inTime)}</td><td class="num">${fmtT(a.outTime)}</td><td class="num">${a.inLate ? a.inLate + ' min' : badge('On time', 'green')}</td>
+    <h2 class="section-title">Check-ins</h2>
+    <div class="card flush">${monthRecs.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Delay</th><th>School</th></tr></thead><tbody>
+      ${monthRecs.map((a) => `<tr><td>${fmtD(a.date)}</td><td class="num">${fmtT(a.inTime)}</td><td class="num">${fmtT(a.outTime)}</td><td class="num">${a.inLate ? a.inLate + ' min' : badge('On time', 'green')}</td>
         <td>${esc(schoolName(a.inSchool))}${a.outSchool && a.outSchool !== a.inSchool ? ' → ' + esc(schoolName(a.outSchool)) : ''}</td></tr>`).join('')}</tbody></table></div>`
-      : empty('clock', 'No attendance yet', 'Check in from Home when you reach school.')}</div>`;
+      : empty('clock', 'No check-ins this month', 'Check in from Home when you reach school.')}</div>`;
 }
-
-function tLeave(u: User): string {
+// Leave form + own history. Used by teachers (inside Attendance) and coordinators (Leave tab).
+function leaveSection(u: User): string {
   const mine = STORE.get('leaves').filter((l) => l.teacher === u.name).sort((a, b) => b.from.localeCompare(a.from));
-  return pageHead('Leave', 'Leave is approved by Parth (CEO) or Manish.') +
-    `<section class="card">
+  return `<p class="hint" style="margin:0 0 12px">Leave is approved by Parth (CEO) or Manish.</p>
+    <section class="card">
       <label class="field-l" for="lvType">Type</label><select id="lvType">${CONFIG.leaveTypes.map((x) => `<option>${x}</option>`).join('')}</select>
       <div class="grid2"><div><label class="field-l" for="lvFrom">From</label><input type="date" id="lvFrom" value="${todayStr()}" min="${todayStr()}"></div>
         <div><label class="field-l" for="lvTo">To</label><input type="date" id="lvTo" value="${todayStr()}" min="${todayStr()}"></div></div>
@@ -485,12 +537,20 @@ function tLeave(u: User): string {
     <h2 class="section-title">My leave</h2>
     <div class="card list">${mine.length ? mine.map((l) => leaveItem(l, { withdraw: true })).join('') : empty('calx', 'No leave applied', 'Your applications and their status appear here.')}</div>`;
 }
+function mLeave(u: User): string {
+  const names = teachersOfMod(u.name).map((t) => t.name);
+  const theirs = STORE.get('leaves').filter((l) => names.includes(l.teacher))
+    .sort((a, b) => (a.status === 'Pending' ? 0 : 1) - (b.status === 'Pending' ? 0 : 1) || b.from.localeCompare(a.from));
+  return pageHead('Leave', "Apply for your own leave and see your teachers' leave.") + leaveSection(u) +
+    `<h2 class="section-title">Your teachers' leave</h2>
+    <div class="card list">${theirs.length ? theirs.slice(0, 40).map((l) => leaveItem(l, { who: true })).join('') : empty('calx', 'No leave from your teachers', 'Their applications and approvals appear here — view only.')}</div>`;
+}
 function leaveItem(l: Leave, o: { who?: boolean; decide?: boolean; withdraw?: boolean }): string {
   const tone = l.status === 'Approved' ? 'green' : l.status === 'Rejected' ? 'red' : l.status === 'Cancelled' ? 'neutral' : 'amber';
   const days = Math.round((parseD(l.to).getTime() - parseD(l.from).getTime()) / 86400000) + 1;
   return `<div class="row-item wrap-end">${o.who ? `<span class="avatar">${initials(l.teacher)}</span>` : `<span class="row-ic">${ic('calx', 18)}</span>`}
-    <span class="row-main"><b>${o.who ? esc(l.teacher) + ' · ' : ''}${esc(l.type)} · ${fmtD(l.from)}${l.to !== l.from ? '–' + fmtD(l.to) : ''} <span class="muted">(${days} day${days > 1 ? 's' : ''})</span></b>
-      <small>${l.reason ? esc(l.reason) : 'No reason given'}${o.who && l.mod ? ' · Coordinator ' + esc(l.mod) : ''}${l.decidedBy ? ` · ${esc(l.status.toLowerCase())} by ${esc(l.decidedBy)}` : ''}</small></span>
+    <span class="row-main"><b>${o.who ? esc(l.teacher) + (l.applicant === 'mod' ? ' (coordinator)' : '') + ' · ' : ''}${esc(l.type)} · ${fmtD(l.from)}${l.to !== l.from ? '–' + fmtD(l.to) : ''} <span class="muted">(${days} day${days > 1 ? 's' : ''})</span></b>
+      <small>${l.reason ? esc(l.reason) : 'No reason given'}${o.who && l.mod && l.applicant !== 'mod' ? ' · Coordinator ' + esc(l.mod) : ''}${l.decidedBy ? ` · ${esc(l.status.toLowerCase())} by ${esc(l.decidedBy)}` : ''}</small></span>
     <span class="row-end">${badge(l.status === 'Pending' ? 'Awaiting approval' : l.status, tone)}
       ${o.decide && l.status === 'Pending' ? `<button class="btn sm" onclick="decideLeave('${l.id}','Approved')">${ic('check', 16)}Approve</button><button class="btn ghost sm" onclick="decideLeave('${l.id}','Rejected')">${ic('x', 16)}Reject</button>` : ''}
       ${o.withdraw && l.status === 'Pending' ? `<button class="btn ghost sm" onclick="withdrawLeave('${l.id}')">Withdraw</button>` : ''}</span></div>`;
@@ -499,7 +559,8 @@ function submitLeave(): void {
   const u = SESSION.get()!; const from = $('lvFrom').value, to = $('lvTo').value;
   if (!from || !to || to < from) { setErr('lvToErr', 'The end date must be on or after the start date.'); return; }
   setErr('lvToErr', '');
-  STORE.add('leaves', { teacher: u.name, mod: u.mod, type: $('lvType').value, from, to, reason: $('lvReason').value.trim(), status: 'Pending' });
+  const isMod = u.role === 'mod';
+  STORE.add('leaves', { teacher: u.name, mod: isMod ? u.name : u.mod, applicant: isMod ? 'mod' : undefined, type: $('lvType').value, from, to, reason: $('lvReason').value.trim(), status: 'Pending' });
   flash('ok', 'Leave applied — awaiting approval from Parth or Manish.'); render();
 }
 function withdrawLeave(id: string): void { STORE.update('leaves', id, { status: 'Cancelled' }); flash('ok', 'Leave request withdrawn.'); render(); }
@@ -534,18 +595,18 @@ function submitReq(): void {
   const ref = nextRef();
   STORE.add('requests', { ref, teacher: u.name, mod: u.mod, school: $('rqSchool').value, project: kit.id, lines, note: $('rqNote').value.trim(), status: 'Submitted', createdAt: new Date().toISOString() });
   RQ = { project: kit.id, counts: {}, done: ref };
-  flash('ok', `Request ${ref} sent to ${u.mod}.`); render(); window.scrollTo(0, 0);
+  flash('ok', `Request ${ref} sent to the operations team.`); render(); window.scrollTo(0, 0);
 }
 function tRequests(u: User): string {
   const t = STORE.teacher(u.name)!; const kit = kitOf(RQ.project)!;
   const mine = STORE.get('requests').filter((r) => r.teacher === u.name).sort((a, b) => (b.createdAt || b.id || '').localeCompare(a.createdAt || a.id || ''));
   const done = RQ.done ? mine.find((r) => r.ref === RQ.done) : undefined;
   const ack = done ? `<section class="card ack" role="status">
-      <div class="ack-head"><span class="ack-ic">${ic('check', 22)}</span><div><b>Request raised · ${esc(done.ref)}</b><small>Sent to your coordinator ${esc(done.mod)}. Track its status below.</small></div></div>
+      <div class="ack-head"><span class="ack-ic">${ic('check', 22)}</span><div><b>Request raised · ${esc(done.ref)}</b><small>Sent to the operations team. You'll see their expected date below once they confirm it.</small></div></div>
       <ul class="ack-lines">${reqLines(done).map((l) => `<li><span>${esc(l.component)}</span><b>×${l.qty}</b></li>`).join('')}</ul>
       <button class="btn ghost block" onclick="rqReset()">${ic('plus', 18)}Raise another request</button></section>` : '';
   const counted = Object.values(RQ.counts).filter((x) => x > 0);
-  return pageHead('Component requests', 'Pick a project, set the quantity you need, and send it to your coordinator.') + ack +
+  return pageHead('Component requests', 'Pick a project, set the quantity you need, and send it to the operations team.') + ack +
     `<section class="card">
       <span class="field-l" id="projL">Project</span>
       <div class="seg-grid" role="radiogroup" aria-labelledby="projL">${CONFIG.kits.map((k) => `<button role="radio" aria-checked="${k.id === RQ.project}" class="seg-card${k.id === RQ.project ? ' on' : ''}" onclick="rqPick('${k.id}')"><b>${esc(k.name)}</b><small>${k.id} · ${k.items.length} components</small></button>`).join('')}</div>
@@ -558,23 +619,28 @@ function tRequests(u: User): string {
     </section>
     <section class="card">
       <label class="field-l" for="rqSchool">Deliver to</label><select id="rqSchool">${schoolsOfTeacher(t).map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
-      <label class="field-l" for="rqNote">Note for coordinator</label><textarea id="rqNote" rows="2" placeholder="Optional — e.g. needed before Monday's class"></textarea>
+      <label class="field-l" for="rqNote">Note for operations</label><textarea id="rqNote" rows="2" placeholder="Optional — e.g. needed before Monday's class"></textarea>
       <p class="err" id="rqErr" role="alert"></p>
       <button class="btn block" onclick="submitReq()">${ic('send', 18)}Send request</button>
     </section>
     <h2 class="section-title">My requests</h2>
     <div class="card list">${mine.length ? mine.map((r) => reqItem(r)).join('') : empty('package', 'No requests yet', 'Requests you send appear here with their status.')}</div>`;
 }
-function reqTone(st: string): string { return st === 'Fulfilled' ? 'green' : st === 'Sent to Ops' ? 'blue' : 'amber'; }
+function reqTone(st: string): string { return st === 'Fulfilled' ? 'green' : st === 'In progress' ? 'blue' : 'amber'; }
 function reqItem(r: Requisition): string {
   const lines = reqLines(r); const st = reqStatus(r);
   const summary = lines.slice(0, 3).map((l) => `${l.component} ×${l.qty}`).join(', ') + (lines.length > 3 ? ` +${lines.length - 3} more` : '');
+  const placed = r.createdAt ? r.createdAt.slice(0, 10) : '';
+  const track = r.fulfilledAt ? `Fulfilled ${fmtD(r.fulfilledAt)}${placed ? ' · ' + plural(dayDiff(placed, r.fulfilledAt.slice(0, 10)), 'day') : ''}`
+    : r.eta ? `Expected by ${fmtD(r.eta)}${r.eta < todayStr() ? ' · running late' : ''}` : 'Waiting for an expected date from operations';
   return `<div class="row-item"><span class="row-ic">${ic('package', 18)}</span><span class="row-main"><b>${esc(r.ref || 'Request')} · ${esc(kitOf(r.project)?.id || r.project)}</b>
-    <small>${r.createdAt ? fmtD(r.createdAt) + ' · ' : ''}${esc(summary)}</small></span><span class="row-end">${badge(st, reqTone(st))}</span></div>`;
+    <small>${placed ? 'Placed ' + fmtD(placed) + ' · ' : ''}${esc(summary)}</small>
+    <small class="track">${ic(r.fulfilledAt ? 'check' : 'clock', 14)}${esc(track)}</small>${r.opsNote ? `<small>Operations: ${esc(r.opsNote)}</small>` : ''}</span>
+    <span class="row-end">${badge(st, reqTone(st))}</span></div>`;
 }
 function libraryInner(u: User): string {
   const mats = STORE.get('materials').slice().reverse();
-  const canAdd = u.role === 'mod' || u.role === 'ceo';
+  const canAdd = canComms(u);
   return (canAdd ? `<section class="card"><h3 class="card-title">Add a resource</h3>
       <label class="field-l" for="mtTitle">Title</label><input id="mtTitle" placeholder="e.g. Teacher Handbook v2">
       <label class="field-l" for="mtLink">Link</label><input id="mtLink" type="url" inputmode="url" placeholder="https://… (Drive, website)">
@@ -598,9 +664,9 @@ async function addMaterial(): Promise<void> {
     if (file.size > MAX_FILE) { setErr('mtTitleErr', `That file is ${(file.size / 1048576).toFixed(1)} MB — the limit is 20 MB.`); return; }
     const id = 'mat_file_' + Date.now();
     try { await fileSave(id, file); } catch (e) { flash('err', 'Could not store the file on this device.'); return; }
-    STORE.add('materials', { id, title, note: $('mtNote').value, by: u.name, kind: 'file', fileName: file.name, size: file.size, mime: file.type });
+    STORE.add('materials', { id, title, note: $('mtNote').value, by: u.name, kind: 'file', fileName: file.name, size: file.size, mime: file.type, createdAt: new Date().toISOString() });
   } else {
-    STORE.add('materials', { title, note: $('mtNote').value, by: u.name, kind: 'link', link: $('mtLink').value || '#' });
+    STORE.add('materials', { title, note: $('mtNote').value, by: u.name, kind: 'link', link: $('mtLink').value || '#', createdAt: new Date().toISOString() });
   }
   flash('ok', 'Published to the library.'); render();
 }
@@ -613,13 +679,14 @@ async function openFile(id: string): Promise<void> {
 /* ================= UPDATES: official comms, holidays, school events, library ================= */
 let UPD: 'official' | 'events' | 'library' = 'official';
 let PENDING_DEL = ''; // two-tap delete — avoids native confirm(), which sandboxed previews block
-const canComms = (u: User) => u.role === 'ceo' && !!leaderOf(u.name)?.comms;
-function setUpd(k: 'official' | 'events' | 'library'): void { UPD = k; PENDING_DEL = ''; render(); }
+const canComms = (u: User) => u.role === 'hr'; // HR publishes official updates, holidays and the library
+function setUpd(k: string): void { UPD = k as typeof UPD; PENDING_DEL = ''; render(); }
 function openOfficial(): void { UPD = 'official'; go('upd'); }
 const seenKey = (u: User) => `robobox_seen_${u.role}_${u.name}`;
-function unreadNotices(u: User): number {
+function unreadUpdates(u: User): number {
   let seen = ''; try { seen = localStorage.getItem(seenKey(u)) || ''; } catch (e) { /* ignore */ }
-  return STORE.get('notices').filter((n) => n.createdAt > seen && n.by !== u.name).length;
+  return STORE.get('notices').filter((n) => n.createdAt > seen && n.by !== u.name).length
+    + STORE.get('materials').filter((m) => (m.createdAt || '') > seen && m.by !== u.name).length;
 }
 function markSeen(u: User): void { try { localStorage.setItem(seenKey(u), new Date().toISOString()); } catch (e) { /* ignore */ } }
 function armDel(id: string): void { PENDING_DEL = id; render(); }
@@ -629,11 +696,9 @@ const twoTap = (id: string, fn: string, label: string) => PENDING_DEL === id
 const dateChip = (iso: string) => `<span class="date-chip" aria-hidden="true"><b>${parseD(iso).getDate()}</b><small>${parseD(iso).toLocaleDateString([], { month: 'short' })}</small></span>`;
 
 function updatesView(u: User): string {
-  if (UPD === 'official') markSeen(u);
-  const seg = (k: 'official' | 'events' | 'library', label: string, icon: string) =>
-    `<button role="tab" aria-selected="${UPD === k}" class="segtab${UPD === k ? ' on' : ''}" onclick="setUpd('${k}')">${ic(icon, 16)}${label}</button>`;
-  return pageHead('Updates', 'Official communications, holidays, school events and resources.') +
-    `<div class="segtabs" role="tablist" aria-label="Updates">${seg('official', 'Official', 'megaphone')}${seg('events', 'School events', 'flag')}${seg('library', 'Library', 'book')}</div>` +
+  markSeen(u);
+  return pageHead('Updates', 'Company communications, holidays, school events and the handbook.') +
+    segTabs('Updates', UPD, 'setUpd', [['official', 'Official', 'megaphone'], ['events', 'School events', 'flag'], ['library', 'Library', 'book']]) +
     (UPD === 'official' ? officialInner(u) : UPD === 'events' ? eventsInner(u) : libraryInner(u));
 }
 function officialInner(u: User): string {
@@ -665,7 +730,7 @@ function officialInner(u: User): string {
     <div class="card list">${hols.length ? hols.map((h) => `<div class="row-item compact${h.date < today ? ' past' : ''}">${dateChip(h.date)}
       <span class="row-main"><b>${esc(h.name)}</b><small>${parseD(h.date).toLocaleDateString([], { weekday: 'long', year: h.date.slice(0, 4) !== year ? 'numeric' : undefined })}</small></span>
       ${can ? `<span class="row-end">${twoTap(h.id!, `delHoliday('${h.id}')`, 'Remove holiday')}</span>` : ''}</div>`).join('')
-      : empty('sun', 'Holiday list not published yet', can ? 'Add each holiday above.' : 'Manish will publish the yearly holiday list here.')}</div>`;
+      : empty('sun', 'Holiday list not published yet', can ? 'Add each holiday above.' : 'HR will publish the yearly holiday list here.')}</div>`;
 }
 async function postNotice(): Promise<void> {
   const u = SESSION.get()!; if (!canComms(u)) return;
@@ -744,6 +809,239 @@ function comingUp(u: User): string {
     ${evs.map((e) => eventRow(u, e)).join('')}</div>`;
 }
 
+/* ================= LESSON PLANS ================= */
+// Plans are per grade per week (week = its Monday). Each week a teacher marks every grade's plan
+// Done / Partly done / Not done / Not my class. A reason is required for anything not done, and
+// for an update made after that week's Saturday.
+const PLAN_STATES = ['Done', 'Partly done', 'Not done', 'Not my class'];
+const weekOf = (iso: string) => { const d = parseD(iso); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoLocal(d); };
+const weekDue = (wk: string) => addDays(wk, 5); // Saturday
+const gradeNum = (g: string) => parseInt((g.match(/\d+/) || ['999'])[0], 10);
+const byGrade = (a: LessonPlan, b: LessonPlan) => gradeNum(a.grade) - gradeNum(b.grade) || a.grade.localeCompare(b.grade);
+// A "Week" cell is a week number ("Week 3", "3") counted from CONFIG.ayStart, or any date in that week:
+// yyyy-mm-dd, dd/mm/yyyy (day first, as written in India) or "17 Nov 2026". Returns that week's Monday.
+function parseWeek(raw: string): string | null {
+  const s = raw.trim(); let m: RegExpMatchArray | null; let iso = '';
+  if ((m = s.match(/^(?:week\s*)?(\d{1,2})$/i))) return addDays(weekOf(CONFIG.ayStart), (Number(m[1]) - 1) * 7);
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) iso = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  else if ((m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/))) iso = `${m[3].length === 2 ? '20' + m[3] : m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  else { const t = Date.parse(s.replace(/-/g, ' ')); if (!isNaN(t)) iso = isoLocal(new Date(t)); }
+  if (!iso) return null;
+  const [y, mo, d] = iso.split('-').map(Number); const dt = new Date(y, mo - 1, d);
+  return dt.getMonth() === mo - 1 && dt.getDate() === d ? weekOf(iso) : null; // rejects 31/02, month 13
+}
+// Rows pasted from Excel arrive tab-separated: Week · Grade · Topic · Activity. A header row is skipped.
+function parsePlans(text: string): { plans: LessonPlan[]; errors: string[] } {
+  const plans: LessonPlan[] = [], errors: string[] = [];
+  text.split(/\r?\n/).forEach((line, i) => {
+    if (!line.trim()) return;
+    const c = (line.includes('\t') ? line.split('\t') : line.split(',')).map((x) => x.trim());
+    const week = parseWeek(c[0] || '');
+    if (!week) { if (!(i === 0 && /week/i.test(c[0] || ''))) errors.push(`Row ${i + 1}: "${c[0]}" is not a week number or date`); return; }
+    if (!c[1] || !c[2]) { errors.push(`Row ${i + 1}: grade and topic are required`); return; }
+    plans.push({ week, grade: c[1], topic: c[2], activity: c.slice(3).join(', ').replace(/^,\s*|,\s*$/g, '') });
+  });
+  return { plans, errors };
+}
+function planUpdatesOf(name: string, wk: string): PlanUpdate[] { return STORE.get('planUpdates').filter((x) => x.teacher === name && x.week === wk); }
+// A week is tracked only if its plan was published before that week's Saturday — loading a past
+// week's plan later doesn't make everyone retroactively overdue.
+function planStatus(name: string, wk: string): 'none' | 'updated' | 'late' | 'due' | 'overdue' {
+  const ps = STORE.get('lessons').filter((p) => p.week === wk);
+  if (!ps.length || ps.every((p) => (p.addedAt || '').slice(0, 10) > weekDue(wk))) return 'none';
+  const ups = planUpdatesOf(name, wk);
+  if (ups.length) return ups.some((x) => x.late) ? 'late' : 'updated';
+  return todayStr() > weekDue(wk) ? 'overdue' : 'due';
+}
+function overdueWeeks(name: string): string[] {
+  return [...new Set(STORE.get('lessons').map((p) => p.week))].sort().filter((wk) => planStatus(name, wk) === 'overdue');
+}
+const planBadge = (st: string) => st === 'updated' ? badge('Updated', 'green') : st === 'late' ? badge('Updated late', 'amber')
+  : st === 'overdue' ? badge('Not updated', 'red') : st === 'due' ? badge('Due Saturday', 'neutral') : '';
+
+let LW = 0; // week offset from this week
+let LPD: Record<string, string> = {}; // draft status per grade, updated in place by taps
+let LWK = ''; let LPLANS: LessonPlan[] = []; // the week + plans currently on screen
+function setLW(n: number): void { LW = n; LPD = {}; render(); }
+function goWeek(wk: string): void { LW = Math.round(dayDiff(weekOf(todayStr()), wk) / 7); LPD = {}; TAB.teacher = 'lessons'; render(); entered(); }
+function setPlanState(btn: HTMLElement, i: number, st: string): void {
+  LPD[LPLANS[i].grade] = st; pickIn(btn); setErr('lpReasonErr', '');
+  const req = todayStr() > weekDue(LWK) || Object.values(LPD).some((x) => x === 'Partly done' || x === 'Not done');
+  document.getElementById('lpReasonReq')?.toggleAttribute('hidden', !req);
+}
+function tLessons(u: User): string {
+  const cur = weekOf(todayStr()); const wk = addDays(cur, LW * 7);
+  const plans = STORE.get('lessons').filter((p) => p.week === wk).sort(byGrade);
+  LWK = wk; LPLANS = plans;
+  const ups = planUpdatesOf(u.name, wk);
+  ups.forEach((x) => { if (!(x.grade in LPD)) LPD[x.grade] = x.status; });
+  const overdue = overdueWeeks(u.name).filter((w) => w !== wk);
+  const late = todayStr() > weekDue(wk);
+  const reasonReq = late || Object.values(LPD).some((x) => x === 'Partly done' || x === 'Not done');
+  const when = LW === 0 ? 'This week' : LW === -1 ? 'Last week' : LW === 1 ? 'Next week' : `Week of ${fmtD(wk)}`;
+  return pageHead('Lesson plans', 'Your weekly plan from Robobox. Update your progress by Saturday.') +
+    (overdue.length ? `<button class="notice err as-btn" onclick="goWeek('${overdue[0]}')">${ic('alert', 18)}<span><b>${plural(overdue.length, 'week')} not updated</b> — week of ${fmtD(overdue[0])}. Tap to update with a reason.</span></button>` : '') +
+    `<section class="card week-nav"><button class="icon-btn" aria-label="Previous week" onclick="setLW(${LW - 1})">${ic('chevL')}</button>
+      <div><b>${when}</b><small>${fmtD(wk)} – ${fmtD(weekDue(wk))}</small></div>
+      <button class="icon-btn" aria-label="Next week" onclick="setLW(${LW + 1})">${ic('chevR')}</button></section>
+    ${plans.length ? plans.map((p) => { const up = ups.find((x) => x.grade === p.grade); return `<article class="card lesson">
+        <div class="lesson-head"><span class="grade-chip">${esc(p.grade)}</span>${up ? badge(up.status, up.status === 'Done' ? 'green' : up.status === 'Not my class' ? 'neutral' : 'amber') : ''}</div>
+        <h3>${esc(p.topic)}</h3>${p.activity ? `<p>${esc(p.activity)}</p>` : ''}</article>`; }).join('')
+      : `<div class="card">${empty('book', 'No plan for this week', 'Lesson plans published by Robobox appear here.')}</div>`}
+    ${plans.length && wk <= cur ? `<h2 class="section-title">Weekly progress ${planBadge(planStatus(u.name, wk))}</h2>
+      <section class="card">
+        ${plans.map((p, i) => `<div class="q"><div class="qt"><b>${esc(p.grade)}</b> · ${esc(p.topic)}</div>
+          <div class="rate opts" role="group" aria-label="${esc(p.grade)} progress">${PLAN_STATES.map((st) => `<button class="${st === 'Done' ? 'yes' : st === 'Not done' ? 'no' : ''}${LPD[p.grade] === st ? ' on' : ''}" onclick="setPlanState(this,${i},'${st}')">${st}</button>`).join('')}</div></div>`).join('')}
+        <label class="field-l" for="lpReason">Reason <span class="req-tag" id="lpReasonReq"${reasonReq ? '' : ' hidden'}>Required</span></label>
+        <textarea id="lpReason" rows="3" placeholder="${late ? 'This update is after Saturday — say why it is late, and why anything was not done' : 'Needed if anything was partly done or not done'}">${esc(ups[0]?.reason || '')}</textarea>
+        <p class="err" id="lpReasonErr" role="alert"></p>
+        <button class="btn block" onclick="submitPlanUpdate()">${ic('check', 18)}${ups.length ? 'Update progress' : 'Submit weekly update'}</button>
+        <p class="hint">${ups.length ? `Last updated ${fmtD(ups[0].at)}${ups[0].late ? ' — after the deadline' : ''}.` : `Due ${fmtLong(weekDue(wk))}.`}</p>
+      </section>` : plans.length ? `<p class="hint">Progress for this week opens on ${fmtLong(wk)}.</p>` : ''}`;
+}
+function submitPlanUpdate(): void {
+  const u = SESSION.get()!; const wk = LWK;
+  const missing = LPLANS.filter((p) => !LPD[p.grade]);
+  if (missing.length) { setErr('lpReasonErr', `Choose a status for ${missing.map((p) => p.grade).join(', ')}.`); return; }
+  const prev = planUpdatesOf(u.name, wk);
+  const late = !prev.some((x) => !x.late) && todayStr() > weekDue(wk); // editing an on-time update stays on time
+  const reason = $('lpReason').value.trim();
+  if ((late || LPLANS.some((p) => LPD[p.grade] === 'Partly done' || LPD[p.grade] === 'Not done')) && reason.length < 5) {
+    setErr('lpReasonErr', late ? 'This update is late — add the reason.' : 'Add a reason for what was not done.'); $('lpReason').focus(); return;
+  }
+  prev.forEach((x) => STORE.remove('planUpdates', x.id!));
+  const at = new Date().toISOString();
+  LPLANS.forEach((p) => STORE.add('planUpdates', { teacher: u.name, week: wk, grade: p.grade, status: LPD[p.grade] as PlanUpdate['status'], reason, at, late }));
+  flash('ok', 'Weekly progress saved — your coordinator can see it.'); render();
+}
+// Last finished week with a plan (or this week if none) — who updated, who didn't.
+function complianceCard(names: string[]): string {
+  const cur = weekOf(todayStr()); const last = addDays(cur, -7);
+  const wk = names.some((n) => planStatus(n, last) !== 'none') ? last : cur;
+  const rows = names.map((n) => ({ n, st: planStatus(n, wk) })).filter((x) => x.st !== 'none');
+  if (!rows.length) return '';
+  const cnt = (k: string) => rows.filter((x) => x.st === k).length;
+  const missing = rows.filter((x) => x.st === 'overdue' || x.st === 'due');
+  return `<section class="card"><div class="card-head"><b>${ic('book', 18)} Lesson plan updates</b><span class="muted">Week of ${fmtD(wk)}</span></div>
+    <div class="mini-stats"><span><b>${cnt('updated')}</b>on time</span><span><b>${cnt('late')}</b>late</span><span><b>${missing.length}</b>${wk === cur ? 'pending' : 'not updated'}</span></div>
+    ${missing.length ? `<p class="hint">${wk === cur ? 'Pending' : 'Not updated'}: ${missing.map((x) => esc(x.n)).join(', ')}</p>` : ''}</section>`;
+}
+function planHistory(name: string): string {
+  const cur = weekOf(todayStr());
+  const weeks = [...new Set(STORE.get('lessons').map((p) => p.week))].filter((w) => w <= cur && planStatus(name, w) !== 'none').sort().reverse().slice(0, 6);
+  if (!weeks.length) return '';
+  return `<h2 class="section-title">Lesson plan updates</h2><div class="card list">${weeks.map((w) => { const ups = planUpdatesOf(name, w); return `<div class="row-item"><span class="row-ic">${ic('book', 18)}</span>
+    <span class="row-main"><b>Week of ${fmtD(w)}</b><small>${ups.length ? ups.map((x) => `${esc(x.grade)}: ${esc(x.status)}`).join(' · ') : 'No update yet'}</small>${ups[0]?.reason ? `<small>Reason: ${esc(ups[0].reason)}</small>` : ''}</span>
+    <span class="row-end">${planBadge(planStatus(name, w))}</span></div>`; }).join('')}</div>`;
+}
+let CTS = 'teachers'; // leadership Teachers tab section
+function setCts(k: string): void { CTS = k; PENDING_DEL = ''; render(); }
+function plansAdmin(u: User): string {
+  const cur = weekOf(todayStr()); const weeks = [...new Set(STORE.get('lessons').map((p) => p.week))].sort().reverse();
+  return complianceCard(STORE.get('teachers').map((t) => t.name)) +
+    (isTop(u) ? `<section class="card"><h3 class="card-title">Load lesson plans</h3>
+      <p class="hint" style="margin-top:0">In Excel, select the rows <b>Week · Grade · Topic · Activity</b>, copy, and paste below. Week is a number (Week 1 = ${fmtD(weekOf(CONFIG.ayStart))}) or any date in that week. A plan for the same week and grade is replaced.</p>
+      <button class="btn ghost sm" onclick="planTemplate()">${ic('download', 16)}Excel template</button>
+      <label class="field-l" for="lpPaste">Paste rows</label><textarea id="lpPaste" class="paste" rows="7" placeholder="Week 24&#9;Grade 5&#9;Line follower robot&#9;Build and test with IR sensors"></textarea>
+      <p class="err" id="lpPasteErr" role="alert"></p>
+      <button class="btn block" onclick="loadPlans()">${ic('upload', 18)}Load plans</button></section>` : '') +
+    `<h2 class="section-title">Published weeks</h2><div class="card list">${weeks.length ? weeks.map((w) => { const ps = STORE.get('lessons').filter((p) => p.week === w).sort(byGrade);
+      return `<div class="row-item${isTop(u) ? ' wrap-end' : ''}">${dateChip(w)}<span class="row-main"><b>Week of ${fmtD(w)}${w === cur ? ' · this week' : ''}</b><small>${ps.map((p) => `${esc(p.grade)}: ${esc(p.topic)}`).join(' · ')}</small></span>${isTop(u) ? `<span class="row-end">${twoTap('wk' + w, `delPlanWeek('${w}')`, 'Remove week')}</span>` : ''}</div>`; }).join('')
+      : empty('book', 'No lesson plans yet', isTop(u) ? 'Paste rows from Excel above.' : 'Plans loaded by Parth or Manish appear here.')}</div>`;
+}
+function loadPlans(): void {
+  if (!isTop(SESSION.get()!)) return;
+  const { plans, errors } = parsePlans($('lpPaste').value);
+  if (errors.length) { setErr('lpPasteErr', errors.slice(0, 3).join(' · ') + (errors.length > 3 ? ` · +${errors.length - 3} more` : '')); return; }
+  if (!plans.length) { setErr('lpPasteErr', 'Paste at least one row.'); return; }
+  const addedAt = new Date().toISOString();
+  plans.forEach((p) => {
+    STORE.get('lessons').filter((x) => x.week === p.week && x.grade === p.grade).forEach((x) => STORE.remove('lessons', x.id!));
+    STORE.add('lessons', { ...p, addedAt });
+  });
+  const weeks = new Set(plans.map((p) => p.week)).size;
+  flash('ok', `Loaded ${plural(plans.length, 'plan')} across ${plural(weeks, 'week')}.`); render();
+}
+function delPlanWeek(wk: string): void { STORE.get('lessons').filter((p) => p.week === wk).forEach((p) => STORE.remove('lessons', p.id!)); PENDING_DEL = ''; flash('ok', `Week of ${fmtD(wk)} removed.`); render(); }
+function planTemplate(): void {
+  downloadXLSX('robobox-lesson-plan-template.xlsx', [['Week', 'Grade', 'Topic', 'Activity / objective'],
+    ['Week 1', 'Grade 5', 'Introduction to sensors', 'Build an IR obstacle detector'], ['Week 1', 'Grade 6', 'Motors and gears', 'Assemble a geared crawler']], 'Lesson plans');
+}
+
+/* ================= OPERATIONS: component request fulfilment ================= */
+// Fulfilment KPI. ponytail: SLA = CONFIG.opsSlaDays calendar days from request to fulfilment; tune with Robobox.
+function opsKpi(rs: Requisition[]): { avgDays: number | null; slaPct: number | null; etaPct: number | null; open: number; overdue: number } {
+  const today = todayStr(); const placed = (r: Requisition) => (r.createdAt || '').slice(0, 10);
+  const done = rs.filter((r) => r.fulfilledAt && r.createdAt);
+  const turn = done.map((r) => dayDiff(placed(r), r.fulfilledAt!.slice(0, 10)));
+  const withEta = done.filter((r) => r.eta);
+  const open = rs.filter((r) => reqStatus(r) !== 'Fulfilled' && r.createdAt);
+  const pct = (a: number, b: number) => b ? Math.round((100 * a) / b) : null;
+  return {
+    avgDays: turn.length ? turn.reduce((a, b) => a + b, 0) / turn.length : null,
+    slaPct: pct(turn.filter((d) => d <= CONFIG.opsSlaDays).length, turn.length),
+    etaPct: pct(withEta.filter((r) => r.fulfilledAt!.slice(0, 10) <= r.eta!).length, withEta.length),
+    open: open.length,
+    overdue: open.filter((r) => (r.eta || addDays(placed(r), CONFIG.opsSlaDays)) < today).length,
+  };
+}
+function opsKpiCards(): string {
+  const k = opsKpi(STORE.get('requests'));
+  return `<div class="kpis">${kpi('Avg time to fulfil', k.avgDays == null ? '—' : k.avgDays.toFixed(1) + ' days', 'clock')}
+    ${kpi(`Within ${CONFIG.opsSlaDays}-day target`, k.slaPct == null ? '—' : k.slaPct + '%', 'target', k.slaPct != null && k.slaPct < 80 ? 'amber' : '')}
+    ${kpi('Expected dates kept', k.etaPct == null ? '—' : k.etaPct + '%', 'check')}
+    ${kpi('Open · overdue', `${k.open} · ${k.overdue}`, 'package', k.overdue ? 'amber' : '')}</div>`;
+}
+let OPF = 'Submitted';
+function setOPF(k: string): void { OPF = k; render(); }
+function opsRequests(u: User): string {
+  const all = STORE.get('requests').slice().sort((a, b) => (b.createdAt || b.id || '').localeCompare(a.createdAt || a.id || ''));
+  const open = all.filter((r) => reqStatus(r) !== 'Fulfilled').length; const today = todayStr();
+  const list = OPF === 'All' ? all : all.filter((r) => reqStatus(r) === OPF);
+  const chip = (k: string, label: string) => `<button class="chip${OPF === k ? ' on' : ''}" aria-pressed="${OPF === k}" onclick="setOPF('${k}')">${label} <span>${k === 'All' ? all.length : all.filter((r) => reqStatus(r) === k).length}</span></button>`;
+  return pageHead('Component requests', 'From every teacher. Confirm an expected date — the teacher sees it — then mark it fulfilled.',
+    `<button class="btn sm" onclick="dlRequests()">${ic('download', 16)}Excel (${open})</button>`) +
+    `<h2 class="section-title">Your fulfilment KPI</h2>${opsKpiCards()}
+    <div class="chips">${chip('Submitted', 'New')}${chip('In progress', 'In progress')}${chip('Fulfilled', 'Fulfilled')}${chip('All', 'All')}</div>
+    ${list.length ? list.map((r) => {
+      const st = reqStatus(r); const placed = (r.createdAt || '').slice(0, 10);
+      const due = r.eta || (placed ? addDays(placed, CONFIG.opsSlaDays) : '');
+      const teacher = STORE.teacher(r.teacher);
+      return `<section class="card req">
+        <div class="req-head"><span class="avatar">${initials(r.teacher)}</span><span class="row-main"><b>${esc(r.teacher)}</b><small>${esc(r.ref || 'Request')}${placed ? ' · placed ' + fmtD(placed) : ''}${r.school ? ' · ' + esc(schoolName(r.school)) : ''}${teacher ? ' · ' + esc(teacher.mod) : ''}</small></span>${badge(st, reqTone(st))}</div>
+        <p class="req-proj">${ic('package', 16)}${esc(kitLabel(r.project))}</p>
+        <table class="tbl lines"><thead><tr><th>Component</th><th class="num">Qty</th></tr></thead><tbody>${reqLines(r).map((l) => `<tr><td>${esc(l.component)}</td><td class="num">${l.qty}</td></tr>`).join('')}</tbody></table>
+        ${r.note ? `<p class="req-note">“${esc(r.note)}”</p>` : ''}
+        ${st === 'Fulfilled' ? `<p class="req-note">${ic('check', 16)} Fulfilled ${fmtD(r.fulfilledAt)}${placed && r.fulfilledAt ? ' · ' + plural(dayDiff(placed, r.fulfilledAt.slice(0, 10)), 'day') + ' after it was placed' : ''}${r.eta && r.fulfilledAt ? (r.fulfilledAt.slice(0, 10) <= r.eta ? ' · on the promised date' : ' · after the promised date') : ''}</p>`
+          : `${due && due < today ? `<p class="err">Overdue — ${r.eta ? 'expected ' + fmtD(r.eta) : `${CONFIG.opsSlaDays}-day target passed`}</p>` : ''}
+        <div class="grid2"><div><label class="field-l" for="eta_${r.id}">Expected by</label><input type="date" id="eta_${r.id}" value="${r.eta || ''}" min="${placed || today}"></div>
+          <div><label class="field-l" for="on_${r.id}">Note to teacher</label><input id="on_${r.id}" value="${esc(r.opsNote || '')}" placeholder="Optional"></div></div>
+        <p class="err" id="eta_${r.id}Err" role="alert"></p>
+        <div class="btn-row"><button class="btn ghost" onclick="setEta('${r.id}')">${ic('calendar', 16)}${r.eta ? 'Update date' : 'Confirm date'}</button><button class="btn" onclick="fulfil('${r.id}')">${ic('check', 16)}Mark fulfilled</button></div>`}
+      </section>`;
+    }).join('') : `<div class="card">${empty('package', OPF === 'Submitted' ? 'No new requests' : 'Nothing here', 'Teacher requests appear here as they come in.')}</div>`}`;
+}
+function setEta(id: string): void {
+  const eta = $('eta_' + id).value;
+  if (!eta) { setErr('eta_' + id + 'Err', 'Pick the expected date.'); return; }
+  STORE.update('requests', id, { eta, opsNote: $('on_' + id).value.trim(), status: 'In progress' });
+  flash('ok', `Expected date ${fmtD(eta)} shared with the teacher.`); render();
+}
+function fulfil(id: string): void { STORE.update('requests', id, { fulfilledAt: new Date().toISOString(), status: 'Fulfilled' }); flash('ok', 'Marked fulfilled — the teacher can see it.'); render(); }
+function dlRequests(): void {
+  const reqs = STORE.get('requests').filter((r) => reqStatus(r) !== 'Fulfilled');
+  if (!reqs.length) { flash('warn', 'No open requests to download.'); return; }
+  const rows: unknown[][] = [['Ref', 'Placed', 'Teacher', 'School', 'Coordinator', 'Project', 'Component', 'Quantity', 'Expected by', 'Note']];
+  reqs.forEach((r) => reqLines(r).forEach((l) => rows.push([r.ref || '', (r.createdAt || '').slice(0, 10), r.teacher, schoolName(r.school), STORE.teacher(r.teacher)?.mod || '', kitLabel(r.project), l.component, l.qty, r.eta || '', r.note])));
+  downloadXLSX(`robobox-component-requests-open-${todayStr()}.xlsx`, rows, 'Open requests');
+}
+// School events in the next two weeks, for the coordinator's and leadership's main screens.
+function eventsCard(u: User, title: string): string {
+  const today = todayStr(), until = addDays(today, 14);
+  const evs = eventsFor(u).filter((e) => evEnd(e) >= today && e.date <= until).sort((a, b) => a.date.localeCompare(b.date));
+  return evs.length ? `<h2 class="section-title">${title}</h2><div class="card list">${evs.slice(0, 6).map((e) => eventRow(u, e)).join('')}</div>` : '';
+}
+
 /* ================= COORDINATOR ================= */
 function mTeachers(u: User): string {
   const ts = teachersOfMod(u.name); const names = ts.map((t) => t.name); const today = todayStr();
@@ -755,12 +1053,12 @@ function mTeachers(u: User): string {
       ${pending.length ? `<p class="hint">${pending.length} awaiting approval from Parth or Manish: ${pending.map((l) => esc(l.teacher)).join(', ')}.</p>` : ''}
     </section>` : '';
   return pageHead('My teachers', `${ts.length} teachers · ${schoolsOfMod(u.name).length} schools`, `<button class="btn ghost sm" onclick="reportCoordTeachers('${esc(u.name)}')">${ic('download', 16)}Report</button>`) +
-    leaveCard + searchBox('tList', 'Search teachers') +
+    leaveCard + complianceCard(names) + eventsCard(u, 'School events · next 2 weeks') + searchBox('tList', 'Search teachers') +
     `<div class="card list" id="tList">${ts.map((t) => {
       const rag = teacherRag(t.name); const lv = leaveOn(t.name);
       return `<button class="row-item tap" data-q="${esc(t.name.toLowerCase())}" onclick="openTeacher('${esc(t.name)}')"><span class="avatar">${initials(t.name)}</span>
         <span class="row-main"><b>${esc(t.name)}</b><small>${esc(schoolsOfTeacher(t).map((s) => s.name).join(', '))} · avg delay ${avgLate(t.name)} min</small></span>
-        <span class="row-end">${lv ? badge('On leave', 'amber') : ''}${rag.avg != null ? `<span class="score">${rag.avg.toFixed(1)}</span>` : ''}${ragPill(rag.key)}${ic('chevR', 18)}</span></button>`;
+        <span class="row-end">${lv ? badge('On leave', 'amber') : ''}${overdueWeeks(t.name).length ? badge('Plan not updated', 'red') : ''}${rag.avg != null ? `<span class="score">${rag.avg.toFixed(1)}</span>` : ''}${ragPill(rag.key)}${ic('chevR', 18)}</span></button>`;
     }).join('')}</div>`;
 }
 // Performance block (KPIs + visit history with action plans). Coordinators and leadership only —
@@ -798,7 +1096,7 @@ function teacherDetail(u: User, name: string): string {
   return backLink(u.role === 'mod' ? 'My teachers' : 'All teachers', 'closeTeacher()') +
     pageHead(esc(name), esc(schoolsOfTeacher(t).map((s) => s.name).join(', ')) + (u.role === 'ceo' ? ` · Coordinator ${esc(t.mod)}` : '')) +
     (lv ? `<div class="notice info">${ic('calx', 18)}<span>On approved ${esc(lv.type.toLowerCase())} leave until ${fmtD(lv.to)}.</span></div>` : '') +
-    perfInner(name) +
+    perfInner(name) + planHistory(name) +
     (u.role === 'mod' ? `<h2 class="section-title">Tasks</h2>
       <section class="card"><label class="field-l" for="tkTitle">Assign a task</label><input id="tkTitle" placeholder="e.g. Submit Module 3 lesson plan">
         <div class="grid2"><div><label class="field-l" for="tkDue">Due</label><input id="tkDue" type="date" min="${todayStr()}"></div><div><label class="field-l" for="tkDetail">Detail</label><input id="tkDetail" placeholder="Optional"></div></div>
@@ -988,51 +1286,6 @@ function addPlan(): void {
 function donePlan(id: string): void { STORE.update('plans', id, { status: 'Done' }); render(); }
 function delPlan(id: string): void { STORE.remove('plans', id); flash('ok', 'Plan removed.'); render(); }
 
-/* ---- component requests (coordinator) ---- */
-let RQF = 'Submitted';
-function setRQF(k: string): void { RQF = k; render(); }
-function mRequests(u: User): string {
-  const all = STORE.get('requests').filter((r) => r.mod === u.name).sort((a, b) => (b.createdAt || b.id || '').localeCompare(a.createdAt || a.id || ''));
-  const open = all.filter((r) => reqStatus(r) === 'Submitted');
-  const list = RQF === 'All' ? all : all.filter((r) => reqStatus(r) === RQF);
-  const chip = (k: string, label: string) => `<button class="chip${RQF === k ? ' on' : ''}" aria-pressed="${RQF === k}" onclick="setRQF('${k}')">${label} <span>${k === 'All' ? all.length : all.filter((r) => reqStatus(r) === k).length}</span></button>`;
-  return pageHead('Component requests', 'From your teachers. Download for operations, then mark as sent.',
-    `<button class="btn sm" onclick="dlRequests()">${ic('download', 16)}Excel (${open.length})</button><button class="btn ghost sm" onclick="emailOps()">${ic('mail', 16)}Email ops</button>`) +
-    `<div class="chips">${chip('Submitted', 'New')}${chip('Sent to Ops', 'Sent to ops')}${chip('Fulfilled', 'Fulfilled')}${chip('All', 'All')}</div>
-    ${RQF === 'Submitted' && open.length ? `<button class="link-btn" onclick="markAllSent()">${ic('check', 16)}Mark all ${open.length} as sent to operations</button>` : ''}
-    ${list.length ? list.map((r) => {
-      const st = reqStatus(r);
-      return `<section class="card req">
-        <div class="req-head"><span class="avatar">${initials(r.teacher)}</span><span class="row-main"><b>${esc(r.teacher)}</b><small>${esc(r.ref || 'Request')} · ${r.createdAt ? fmtD(r.createdAt) : ''}${r.school ? ' · ' + esc(schoolName(r.school)) : ''}</small></span>${badge(st, reqTone(st))}</div>
-        <p class="req-proj">${ic('package', 16)}${esc(kitLabel(r.project))}</p>
-        <table class="tbl lines"><thead><tr><th>Component</th><th class="num">Qty</th></tr></thead><tbody>${reqLines(r).map((l) => `<tr><td>${esc(l.component)}</td><td class="num">${l.qty}</td></tr>`).join('')}</tbody></table>
-        ${r.note ? `<p class="req-note">“${esc(r.note)}”</p>` : ''}
-        ${st === 'Submitted' ? `<button class="btn ghost block" onclick="markReq('${r.id}','Sent to Ops')">${ic('send', 16)}Mark sent to operations</button>`
-          : st === 'Sent to Ops' ? `<button class="btn ghost block" onclick="markReq('${r.id}','Fulfilled')">${ic('check', 16)}Mark fulfilled</button>` : ''}
-      </section>`;
-    }).join('') : `<div class="card">${empty('package', RQF === 'Submitted' ? 'No new requests' : 'Nothing here', 'Teacher requests appear here as they come in.')}</div>`}`;
-}
-function openRequests(): Requisition[] { const u = SESSION.get()!; return STORE.get('requests').filter((r) => r.mod === u.name && reqStatus(r) === 'Submitted'); }
-function dlRequests(): void {
-  const u = SESSION.get()!; const reqs = openRequests();
-  if (!reqs.length) { flash('warn', 'No new requests to download.'); return; }
-  const rows: unknown[][] = [['Ref', 'Date', 'Teacher', 'School', 'Coordinator', 'Project', 'Component', 'Quantity', 'Note']];
-  reqs.forEach((r) => reqLines(r).forEach((l) => rows.push([r.ref || '', r.createdAt ? r.createdAt.slice(0, 10) : '', r.teacher, schoolName(r.school), u.name, kitLabel(r.project), l.component, l.qty, r.note])));
-  downloadXLSX(`robobox-component-requests-${u.name}-${todayStr()}.xlsx`, rows, 'Component requests');
-  flash('ok', `Downloaded ${reqs.length} request${reqs.length > 1 ? 's' : ''}. Attach it to your email to operations.`);
-}
-function emailOps(): void {
-  const u = SESSION.get()!; const reqs = openRequests();
-  if (!reqs.length) { flash('warn', 'No new requests to email.'); return; }
-  const body = [`Hi team,`, ``, `Component requests from ${u.name}'s teachers (Excel attached):`, ``,
-    ...reqs.map((r) => `${r.ref || 'Request'} · ${r.teacher} · ${schoolName(r.school)} · ${kitLabel(r.project)}\n` + reqLines(r).map((l) => `   - ${l.component} x${l.qty}`).join('\n')),
-    ``, `Thanks,`, u.name].join('\n').slice(0, 1800);
-  const subject = `Component requests · ${u.name} · ${fmtD(todayStr())}`;
-  window.location.href = `mailto:${encodeURIComponent(CONFIG.opsEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-function markReq(id: string, status: string): void { STORE.update('requests', id, { status }); flash('ok', `Marked ${status === 'Fulfilled' ? 'fulfilled' : 'sent to operations'}.`); render(); }
-function markAllSent(): void { const n = openRequests().length; openRequests().forEach((r) => STORE.update('requests', r.id!, { status: 'Sent to Ops' })); flash('ok', `${n} request${n > 1 ? 's' : ''} marked sent to operations.`); render(); }
-
 /* ================= LEADERSHIP (Parth, Manish, Outsight) ================= */
 function ragCounts(teachers: Teacher[]): Record<RagOrNone, number> {
   const c: Record<RagOrNone, number> = { green: 0, amber: 0, red: 0, none: 0 };
@@ -1055,6 +1308,8 @@ function cOverview(u: User): string {
     ${safety.length ? `<div class="notice err">${ic('alert', 18)}<span><b>${safety.length} safety concern${safety.length > 1 ? 's' : ''} flagged</b> — escalate immediately.</span></div>` : ''}
     ${isTop(u) ? `<section class="card split"><div>${kpi('On leave today', onLeave.length, 'calx')}</div><div>${kpi('Leave awaiting you', pending.length, 'clock', pending.length ? 'amber' : '')}</div>
       ${pending.length ? `<button class="btn block" onclick="go('leave')">Review leave</button>` : ''}</section>` : ''}
+    <h2 class="section-title">Operations · component requests</h2>${opsKpiCards()}
+    ${eventsCard(u, 'School events · next 2 weeks')}
     <h2 class="section-title">Needs attention</h2>
     <div class="card list">${attention.length ? attention.slice(0, 10).map(({ t, fb }) => `<button class="row-item tap" onclick="openTeacher('${esc(t.name)}')"><span class="avatar">${initials(t.name)}</span>
       <span class="row-main"><b>${esc(t.name)}</b><small>${esc(t.mod)} · ${esc(fb.judgement.action)} · ${fmtD(fb.date)}</small></span><span class="row-end">${ragPill(fb.rag)}${ic('chevR', 18)}</span></button>`).join('')
@@ -1063,9 +1318,11 @@ function cOverview(u: User): string {
 function cTeachers(u: User): string {
   const order: Record<RagOrNone, number> = { red: 0, amber: 1, green: 2, none: 3 };
   const ts = STORE.get('teachers').map((t) => ({ t, rag: teacherRag(t.name) })).sort((a, b) => order[a.rag.key] - order[b.rag.key]);
+  const tabs = segTabs('Teachers', CTS, 'setCts', [['teachers', 'Performance', 'chart'], ['plans', 'Lesson plans', 'book']]);
+  if (CTS === 'plans') return pageHead('Teachers', 'Weekly lesson plans and who has updated their progress.') + tabs + plansAdmin(u);
   return pageHead('Teachers', 'Sorted by risk — red first. Tap a teacher for their trend.',
     `<button class="btn ghost sm" onclick="reportAllTeachers()">${ic('download', 16)}Teachers</button><button class="btn ghost sm" onclick="reportVisits()">${ic('download', 16)}Visit log</button>`) +
-    searchBox('tTable', 'Search teacher or coordinator') +
+    tabs + searchBox('tTable', 'Search teacher or coordinator') +
     `<div class="card flush"><div class="table-wrap"><table class="tbl clickable"><thead><tr><th>Teacher</th><th>Coordinator</th><th class="num">Visits</th><th class="num">Score</th><th class="num">Growth</th><th>Status</th></tr></thead><tbody id="tTable">
     ${ts.map(({ t, rag }) => { const g = teacherGrowth(t.name); return `<tr tabindex="0" data-q="${esc((t.name + ' ' + t.mod).toLowerCase())}" onclick="openTeacher('${esc(t.name)}')" onkeydown="if(event.key==='Enter')openTeacher('${esc(t.name)}')">
       <td><b>${esc(t.name)}</b></td><td>${esc(t.mod)}</td><td class="num">${rag.visits}</td><td class="num">${rag.avg != null ? rag.avg.toFixed(1) : '—'}</td>
@@ -1092,7 +1349,7 @@ function cLeave(u: User): string {
   const all = STORE.get('leaves').slice().sort((a, b) => (a.status === 'Pending' ? 0 : 1) - (b.status === 'Pending' ? 0 : 1) || b.from.localeCompare(a.from));
   const list = LVF === 'All' ? all : all.filter((l) => l.status === LVF);
   const chip = (k: string, label: string) => `<button class="chip${LVF === k ? ' on' : ''}" aria-pressed="${LVF === k}" onclick="setLVF('${k}')">${label} <span>${k === 'All' ? all.length : all.filter((l) => l.status === k).length}</span></button>`;
-  return pageHead('Leave approvals', 'Approved leave is shown to the teacher\'s coordinator.') +
+  return pageHead('Leave approvals', 'Teachers and coordinators. Approved teacher leave is shown to their coordinator.') +
     `<div class="chips">${chip('Pending', 'Awaiting')}${chip('Approved', 'Approved')}${chip('Rejected', 'Rejected')}${chip('All', 'All')}</div>
     <div class="card list">${list.length ? list.map((l) => leaveItem(l, { who: true, decide: true })).join('') : empty('calx', LVF === 'Pending' ? 'No leave awaiting approval' : 'Nothing here')}</div>`;
 }
@@ -1135,11 +1392,12 @@ function reportVisits(): void { // every visit, dated — pivot in Excel for gro
 // Keyed by role:tab. A tab only renders if tabsFor(u) offers it, so permission-gated
 // tabs (coords, leave) are unreachable for Outsight; the views also re-check.
 const VIEWS: Record<string, (u: User) => string> = {
-  'teacher:home': tHome, 'teacher:att': tAttendance, 'teacher:leave': tLeave, 'teacher:req': tRequests, 'teacher:upd': updatesView,
+  'teacher:home': tHome, 'teacher:lessons': tLessons, 'teacher:att': tAttendance, 'teacher:req': tRequests, 'teacher:upd': updatesView,
   'mod:teachers': (u) => SEL ? teacherDetail(u, SEL) : mTeachers(u), 'mod:visit': (u) => VISIT ? mForm() : mVisit(u),
-  'mod:cal': mCalendar, 'mod:req': mRequests, 'mod:upd': updatesView,
+  'mod:cal': mCalendar, 'mod:leave': mLeave, 'mod:upd': updatesView,
   'ceo:overview': cOverview, 'ceo:teachers': (u) => SEL ? teacherDetail(u, SEL) : cTeachers(u),
   'ceo:coords': cCoords, 'ceo:leave': cLeave, 'ceo:upd': updatesView,
+  'ops:req': opsRequests, 'ops:upd': updatesView, 'hr:upd': updatesView,
 };
 
 render();
