@@ -8,13 +8,20 @@ const STORE = (() => {
     return {
       schools: SEED.schools, teachers: SEED.teachers, moderators: SEED.moderators,
       attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
-      notices: [], holidays: [], events: [], lessons: [], planUpdates: [],
+      notices: [], holidays: [], events: [], lessons: SEED.lessons, planUpdates: [],
     };
   }
   function load(): Collections {
     // Spread over a fresh seedDb so a db saved by an older version (missing newer
     // collections like `plans`) is backfilled instead of leaving them undefined.
-    try { const raw = localStorage.getItem(K); if (raw) return { ...seedDb(), ...JSON.parse(raw) } as Collections; } catch (e) { /* ignore */ }
+    try {
+      const raw = localStorage.getItem(K);
+      if (raw) {
+        const d = { ...seedDb(), ...JSON.parse(raw) } as Collections;
+        if (!d.lessons.length) d.lessons = SEED.lessons; // devices saved before the schedule shipped
+        return d;
+      }
+    } catch (e) { /* ignore */ }
     return seedDb();
   }
 

@@ -7,7 +7,7 @@ type RagOrNone = RagKey | 'none';
 
 interface School { id: string; name: string; mod: string; mapLink: string; locNote: string; lat: number | null; lng: number | null; teachers: string[]; }
 interface Teacher { name: string; mod: string; schools: string[]; }
-interface SeedData { moderators: string[]; schools: School[]; teachers: Teacher[]; }
+interface SeedData { moderators: string[]; schools: School[]; teachers: Teacher[]; lessons: LessonPlan[]; }
 
 interface User { role: Role; name: string; mod?: string; }
 
@@ -34,8 +34,9 @@ interface Material { id?: string; title: string; note: string; by: string; kind:
 interface Notice { id?: string; title: string; body: string; by: string; createdAt: string; pinned?: boolean; fileId?: string; fileName?: string; fileSize?: number; }
 interface Holiday { id?: string; date: string; name: string; }
 interface SchoolEvent { id?: string; school: string; teacher: string; type: string; title: string; date: string; to?: string; note: string; createdAt: string; }
-// Lesson plans are per grade per week (week = its Monday). Teachers report progress per grade weekly.
-interface LessonPlan { id?: string; week: string; grade: string; topic: string; activity: string; addedAt?: string; }
+// Lesson plans: one per group (a batch from the training schedule, or a grade) per week (week = its Monday).
+// `teachers` limits a plan to that batch's teachers; without it the plan is for every teacher.
+interface LessonPlan { id?: string; week: string; grade: string; topic: string; activity: string; addedAt?: string; date?: string; trainer?: string; teachers?: string[]; }
 interface PlanUpdate { id?: string; teacher: string; week: string; grade: string; status: 'Done' | 'Partly done' | 'Not done' | 'Not my class'; reason: string; at: string; late: boolean; }
 interface VisitPlan { id?: string; mod: string; school: string; date: string; note?: string; teacher?: string; status: 'Planned' | 'Done'; }
 

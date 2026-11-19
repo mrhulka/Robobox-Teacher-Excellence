@@ -1013,11 +1013,16 @@ const byGrade = (a, b) => gradeNum(a.grade) - gradeNum(b.grade) || a.grade.local
 // A "Week" cell is a week number ("Week 3", "3") counted from CONFIG.ayStart, or any date in that week:
 // yyyy-mm-dd, dd/mm/yyyy (day first, as written in India) or "17 Nov 2026". Returns that week's Monday.
 function parseWeek(raw) {
+    const m = raw.trim().match(/^(?:week\s*)?(\d{1,2})$/i);
+    if (m)
+        return addDays(weekOf(CONFIG.ayStart), (Number(m[1]) - 1) * 7);
+    const day = parseDay(raw);
+    return day && weekOf(day);
+}
+function parseDay(raw) {
     const s = raw.trim();
     let m;
     let iso = '';
-    if ((m = s.match(/^(?:week\s*)?(\d{1,2})$/i)))
-        return addDays(weekOf(CONFIG.ayStart), (Number(m[1]) - 1) * 7);
     if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)))
         iso = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
     else if ((m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/)))
@@ -1031,7 +1036,7 @@ function parseWeek(raw) {
         return null;
     const [y, mo, d] = iso.split('-').map(Number);
     const dt = new Date(y, mo - 1, d);
-    return dt.getMonth() === mo - 1 && dt.getDate() === d ? weekOf(iso) : null; // rejects 31/02, month 13
+    return dt.getMonth() === mo - 1 && dt.getDate() === d ? iso : null; // rejects 31/02, month 13
 }
 // Rows pasted from Excel arrive tab-separated: Week · Grade · Topic · Activity. A header row is skipped.
 function parsePlans(text) {
@@ -1050,15 +1055,17 @@ function parsePlans(text) {
             errors.push(`Row ${i + 1}: grade and topic are required`);
             return;
         }
-        plans.push({ week, grade: c[1], topic: c[2], activity: c.slice(3).join(', ').replace(/^,\s*|,\s*$/g, '') });
+        plans.push({ week, date: parseDay(c[0]) || undefined, grade: c[1], topic: c[2], activity: c.slice(3).join(', ').replace(/^,\s*|,\s*$/g, '') });
     });
     return { plans, errors };
 }
+// Plans that apply to a teacher: their batch's sessions, plus any plan for everyone (no `teachers`).
+function plansFor(name) { const n = name.toLowerCase(); return STORE.get('lessons').filter((p) => !p.teachers || p.teachers.some((t) => t.toLowerCase() === n)); }
 function planUpdatesOf(name, wk) { return STORE.get('planUpdates').filter((x) => x.teacher === name && x.week === wk); }
 // A week is tracked only if its plan was published before that week's Saturday — loading a past
 // week's plan later doesn't make everyone retroactively overdue.
 function planStatus(name, wk) {
-    const ps = STORE.get('lessons').filter((p) => p.week === wk);
+    const ps = plansFor(name).filter((p) => p.week === wk);
     if (!ps.length || ps.every((p) => (p.addedAt || '').slice(0, 10) > weekDue(wk)))
         return 'none';
     const ups = planUpdatesOf(name, wk);
@@ -1067,7 +1074,7 @@ function planStatus(name, wk) {
     return todayStr() > weekDue(wk) ? 'overdue' : 'due';
 }
 function overdueWeeks(name) {
-    return [...new Set(STORE.get('lessons').map((p) => p.week))].sort().filter((wk) => planStatus(name, wk) === 'overdue');
+    return [...new Set(plansFor(name).map((p) => p.week))].sort().filter((wk) => planStatus(name, wk) === 'overdue');
 }
 const planBadge = (st) => st === 'updated' ? badge('Updated', 'green') : st === 'late' ? badge('Updated late', 'amber')
     : st === 'overdue' ? badge('Not updated', 'red') : st === 'due' ? badge('Due Saturday', 'neutral') : '';
@@ -1089,7 +1096,7 @@ function tLessons(u) {
     var _a;
     const cur = weekOf(todayStr());
     const wk = addDays(cur, LW * 7);
-    const plans = STORE.get('lessons').filter((p) => p.week === wk).sort(byGrade);
+    const plans = plansFor(u.name).filter((p) => p.week === wk).sort(byGrade);
     LWK = wk;
     LPLANS = plans;
     const ups = planUpdatesOf(u.name, wk);
@@ -1108,19 +1115,39 @@ function tLessons(u) {
             const up = ups.find((x) => x.grade === p.grade);
             return `<article class="card lesson">
         <div class="lesson-head"><span class="grade-chip">${esc(p.grade)}</span>${up ? badge(up.status, up.status === 'Done' ? 'green' : up.status === 'Not my class' ? 'neutral' : 'amber') : ''}</div>
-        <h3>${esc(p.topic)}</h3>${p.activity ? `<p>${esc(p.activity)}</p>` : ''}</article>`;
+        <h3>${esc(p.topic)}</h3>${p.activity ? `<p>${esc(p.activity)}</p>` : ''}
+        ${p.date || p.trainer ? `<p class="lesson-meta">${ic('calendar', 15)}${p.date ? fmtLong(p.date) : ''}${p.date && p.trainer ? ' · ' : ''}${p.trainer ? 'Trainer ' + esc(p.trainer) : ''}</p>` : ''}</article>`;
         }).join('')
-            : `<div class="card">${empty('book', 'No plan for this week', 'Lesson plans published by Robobox appear here.')}</div>`}
+            : `<div class="card">${empty('book', 'No session this week', plansFor(u.name).length ? 'Your schedule below shows every session.' : "You're not in a training batch yet — Parth or Manish can add you.")}</div>`}
     ${plans.length && wk <= cur ? `<h2 class="section-title">Weekly progress ${planBadge(planStatus(u.name, wk))}</h2>
       <section class="card">
         ${plans.map((p, i) => `<div class="q"><div class="qt"><b>${esc(p.grade)}</b> · ${esc(p.topic)}</div>
-          <div class="rate opts" role="group" aria-label="${esc(p.grade)} progress">${PLAN_STATES.map((st) => `<button class="${st === 'Done' ? 'yes' : st === 'Not done' ? 'no' : ''}${LPD[p.grade] === st ? ' on' : ''}" onclick="setPlanState(this,${i},'${st}')">${st}</button>`).join('')}</div></div>`).join('')}
+          <div class="rate opts" role="group" aria-label="${esc(p.grade)} progress">${PLAN_STATES.filter((st) => !(p.teachers && st === 'Not my class')).map((st) => `<button class="${st === 'Done' ? 'yes' : st === 'Not done' ? 'no' : ''}${LPD[p.grade] === st ? ' on' : ''}" onclick="setPlanState(this,${i},'${st}')">${st}</button>`).join('')}</div></div>`).join('')}
         <label class="field-l" for="lpReason">Reason <span class="req-tag" id="lpReasonReq"${reasonReq ? '' : ' hidden'}>Required</span></label>
         <textarea id="lpReason" rows="3" placeholder="${late ? 'This update is after Saturday — say why it is late, and why anything was not done' : 'Needed if anything was partly done or not done'}">${esc(((_a = ups[0]) === null || _a === void 0 ? void 0 : _a.reason) || '')}</textarea>
         <p class="err" id="lpReasonErr" role="alert"></p>
         <button class="btn block" onclick="submitPlanUpdate()">${ic('check', 18)}${ups.length ? 'Update progress' : 'Submit weekly update'}</button>
         <p class="hint">${ups.length ? `Last updated ${fmtD(ups[0].at)}${ups[0].late ? ' — after the deadline' : ''}.` : `Due ${fmtLong(weekDue(wk))}.`}</p>
-      </section>` : plans.length ? `<p class="hint">Progress for this week opens on ${fmtLong(wk)}.</p>` : ''}`;
+      </section>` : plans.length ? `<p class="hint">Progress for this week opens on ${fmtLong(wk)}.</p>` : ''}
+    ${scheduleList(u, wk)}`;
+}
+// Every session for this teacher, grouped by month; tap one to open its week.
+function scheduleList(u, current) {
+    const ps = plansFor(u.name).slice().sort((a, b) => (a.date || a.week).localeCompare(b.date || b.week));
+    if (!ps.length)
+        return '';
+    let month = '';
+    return `<h2 class="section-title">Your schedule</h2><div class="card list">${ps.map((p) => {
+        const d = p.date || p.week;
+        const m = parseD(d).toLocaleDateString([], { month: 'long', year: 'numeric' });
+        const head = m !== month ? `<p class="list-group">${m}</p>` : '';
+        month = m;
+        const st = planStatus(u.name, p.week);
+        const up = planUpdatesOf(u.name, p.week).find((x) => x.grade === p.grade);
+        return head + `<button class="row-item tap${p.week === current ? ' current' : ''}" onclick="goWeek('${p.week}')">${dateChip(d)}
+      <span class="row-main"><b>${esc(p.topic)}</b><small>${esc(p.grade)}${p.trainer ? ' · ' + esc(p.trainer) : ''}</small></span>
+      <span class="row-end">${up ? badge(up.status, up.status === 'Done' ? 'green' : 'amber') : planBadge(st)}${ic('chevR', 18)}</span></button>`;
+    }).join('')}</div>`;
 }
 function submitPlanUpdate() {
     const u = SESSION.get();
@@ -1160,7 +1187,7 @@ function complianceCard(names) {
 }
 function planHistory(name) {
     const cur = weekOf(todayStr());
-    const weeks = [...new Set(STORE.get('lessons').map((p) => p.week))].filter((w) => w <= cur && planStatus(name, w) !== 'none').sort().reverse().slice(0, 6);
+    const weeks = [...new Set(plansFor(name).map((p) => p.week))].filter((w) => w <= cur && planStatus(name, w) !== 'none').sort().reverse().slice(0, 6);
     if (!weeks.length)
         return '';
     return `<h2 class="section-title">Lesson plan updates</h2><div class="card list">${weeks.map((w) => {
@@ -1178,14 +1205,14 @@ function plansAdmin(u) {
     const weeks = [...new Set(STORE.get('lessons').map((p) => p.week))].sort().reverse();
     return complianceCard(STORE.get('teachers').map((t) => t.name)) +
         (isTop(u) ? `<section class="card"><h3 class="card-title">Load lesson plans</h3>
-      <p class="hint" style="margin-top:0">In Excel, select the rows <b>Week · Grade · Topic · Activity</b>, copy, and paste below. Week is a number (Week 1 = ${fmtD(weekOf(CONFIG.ayStart))}) or any date in that week. A plan for the same week and grade is replaced.</p>
+      <p class="hint" style="margin-top:0">In Excel, select the rows <b>Week · Grade · Topic · Activity</b>, copy, and paste below. Week is a number (Week 1 = ${fmtD(weekOf(CONFIG.ayStart))}) or any date in that week — a date becomes the session date. Use a batch name (e.g. <b>Batch 01</b>) to schedule that batch's teachers, or a grade for everyone. A plan for the same week and group is replaced.</p>
       <button class="btn ghost sm" onclick="planTemplate()">${ic('download', 16)}Excel template</button>
       <label class="field-l" for="lpPaste">Paste rows</label><textarea id="lpPaste" class="paste" rows="7" placeholder="Week 24&#9;Grade 5&#9;Line follower robot&#9;Build and test with IR sensors"></textarea>
       <p class="err" id="lpPasteErr" role="alert"></p>
       <button class="btn block" onclick="loadPlans()">${ic('upload', 18)}Load plans</button></section>` : '') +
         `<h2 class="section-title">Published weeks</h2><div class="card list">${weeks.length ? weeks.map((w) => {
             const ps = STORE.get('lessons').filter((p) => p.week === w).sort(byGrade);
-            return `<div class="row-item${isTop(u) ? ' wrap-end' : ''}">${dateChip(w)}<span class="row-main"><b>Week of ${fmtD(w)}${w === cur ? ' · this week' : ''}</b><small>${ps.map((p) => `${esc(p.grade)}: ${esc(p.topic)}`).join(' · ')}</small></span>${isTop(u) ? `<span class="row-end">${twoTap('wk' + w, `delPlanWeek('${w}')`, 'Remove week')}</span>` : ''}</div>`;
+            return `<div class="row-item${isTop(u) ? ' wrap-end' : ''}">${dateChip(w)}<span class="row-main"><b>Week of ${fmtD(w)}${w === cur ? ' · this week' : ''}</b><small>${[...new Set(ps.map((p) => p.topic))].map((t) => `${esc(t)} — ${plural(ps.filter((p) => p.topic === t).length, 'group')}`).join(' · ')}</small></span>${isTop(u) ? `<span class="row-end">${twoTap('wk' + w, `delPlanWeek('${w}')`, 'Remove week')}</span>` : ''}</div>`;
         }).join('')
             : empty('book', 'No lesson plans yet', isTop(u) ? 'Paste rows from Excel above.' : 'Plans loaded by Parth or Manish appear here.')}</div>`;
 }
@@ -1204,7 +1231,9 @@ function loadPlans() {
     const addedAt = new Date().toISOString();
     plans.forEach((p) => {
         STORE.get('lessons').filter((x) => x.week === p.week && x.grade === p.grade).forEach((x) => STORE.remove('lessons', x.id));
-        STORE.add('lessons', { ...p, addedAt });
+        // A known batch name inherits that batch's teachers and trainer.
+        const batch = STORE.get('lessons').find((x) => x.grade.toLowerCase() === p.grade.toLowerCase() && x.teachers);
+        STORE.add('lessons', { ...p, addedAt, teachers: batch === null || batch === void 0 ? void 0 : batch.teachers, trainer: batch === null || batch === void 0 ? void 0 : batch.trainer, date: p.date });
     });
     const weeks = new Set(plans.map((p) => p.week)).size;
     flash('ok', `Loaded ${plural(plans.length, 'plan')} across ${plural(weeks, 'week')}.`);

@@ -8,7 +8,7 @@ const STORE = (() => {
         return {
             schools: SEED.schools, teachers: SEED.teachers, moderators: SEED.moderators,
             attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
-            notices: [], holidays: [], events: [], lessons: [], planUpdates: [],
+            notices: [], holidays: [], events: [], lessons: SEED.lessons, planUpdates: [],
         };
     }
     function load() {
@@ -16,8 +16,12 @@ const STORE = (() => {
         // collections like `plans`) is backfilled instead of leaving them undefined.
         try {
             const raw = localStorage.getItem(K);
-            if (raw)
-                return { ...seedDb(), ...JSON.parse(raw) };
+            if (raw) {
+                const d = { ...seedDb(), ...JSON.parse(raw) };
+                if (!d.lessons.length)
+                    d.lessons = SEED.lessons; // devices saved before the schedule shipped
+                return d;
+            }
         }
         catch (e) { /* ignore */ }
         return seedDb();

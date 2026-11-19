@@ -42,12 +42,19 @@ no module graph, no build tooling beyond `tsc`. Load order (set in `index.html`)
 Leadership names and who is "top" live in `CONFIG.leaders`. Operations and HR are one shared sign-in each.
 
 ## Lesson plans
-Plans are per **grade per week** (`LessonPlan`). Parth or Manish load them on *Teachers → Lesson plans*
-by pasting rows copied from Excel — `Week · Grade · Topic · Activity` (an Excel template is provided).
-"Week" is a week number counted from `CONFIG.ayStart` or any date in that week (`dd/mm/yyyy` is read
-day-first). Teachers mark each grade *Done / Partly done / Not done / Not my class* by Saturday; a
-reason is required for anything not done and for any late update. Coordinators and leadership see who
-updated; a week counts only if its plan was published before that week's Saturday.
+Seeded from `TEACHERS.xlsx` → *Location & Training Schedule*: each batch (Batch 01–06, Team 01–03,
+Group 01–04) has its teachers, trainer and session dates, and the month column gives the topic
+(Code of Conduct & Lesson Plan, Primary + Secondary Projects Making, Softwares, 3D Printing, Drone,
+Mechatronics, Doubt Solving). 186 sessions; each teacher sees only their batch, as weekly cards plus a
+month-by-month schedule. Sheet names are matched to app teachers (6 spelling variants mapped in the
+seed script, e.g. ACHAL → AACHAL); Group 02's two September sessions dated 5/12 Aug are read as 5/12 Sep.
+
+More sessions (e.g. the empty Nov–Jan columns) are added by Parth or Manish on *Teachers → Lesson plans*
+by pasting rows from Excel — `Date or Week · Batch or Grade · Topic · Activity`. A batch name inherits
+that batch's teachers and trainer; a grade applies to everyone. Teachers mark each session *Done /
+Partly done / Not done* by Saturday; a reason is required for anything not done and for any late
+update. Coordinators and leadership see who updated; a week counts only if its plan was published
+before that week's Saturday.
 
 ## Component requests
 Projects and components come from `Robobox_Kits.xlsx` (sheet "ROBOBOX KIT") in `CONFIG.kits`. A teacher

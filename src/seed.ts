@@ -1,4 +1,5 @@
-// AUTO-GENERATED from the School-Teacher Excel. Regenerate; do not hand-edit.
+// AUTO-GENERATED from the School-Teacher Excel (schools/teachers) and TEACHERS.xlsx → 'Location & Training
+// Schedule' (lessons: one per batch session; topic from the month column). Regenerate; do not hand-edit.
 // Classic script (no import/export): SEED is a global shared with the other scripts.
 const SEED: SeedData = {
   "moderators": [
@@ -823,6 +824,2784 @@ const SEED: SeedData = {
       "schools": [
         "s29"
       ]
+    }
+  ],
+  "lessons": [
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-06",
+      "grade": "Batch 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-13",
+      "grade": "Batch 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-20",
+      "grade": "Batch 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-27",
+      "grade": "Batch 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-04",
+      "grade": "Batch 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-11",
+      "grade": "Batch 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-18",
+      "grade": "Batch 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-25",
+      "grade": "Batch 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-08",
+      "grade": "Batch 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-15",
+      "grade": "Batch 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-22",
+      "grade": "Batch 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-29",
+      "grade": "Batch 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-05",
+      "grade": "Batch 01",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-12",
+      "grade": "Batch 01",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-10-05",
+      "date": "2026-10-10",
+      "grade": "Batch 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-10-12",
+      "date": "2026-10-17",
+      "grade": "Batch 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-10-19",
+      "date": "2026-10-24",
+      "grade": "Batch 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-10-26",
+      "date": "2026-10-31",
+      "grade": "Batch 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Tejaswini",
+        "Meet",
+        "Seema",
+        "SNEHAL B"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-06",
+      "grade": "Batch 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-13",
+      "grade": "Batch 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-20",
+      "grade": "Batch 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-27",
+      "grade": "Batch 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-04",
+      "grade": "Batch 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-11",
+      "grade": "Batch 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-18",
+      "grade": "Batch 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-25",
+      "grade": "Batch 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-08",
+      "grade": "Batch 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-15",
+      "grade": "Batch 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-22",
+      "grade": "Batch 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-29",
+      "grade": "Batch 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-05",
+      "grade": "Batch 02",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-12",
+      "grade": "Batch 02",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Ashutosh",
+        "Bharati",
+        "JITU",
+        "SRIVALLI"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-06",
+      "grade": "Team 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-13",
+      "grade": "Team 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-20",
+      "grade": "Team 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-27",
+      "grade": "Team 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-04",
+      "grade": "Team 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-11",
+      "grade": "Team 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-18",
+      "grade": "Team 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-25",
+      "grade": "Team 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-08",
+      "grade": "Team 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-15",
+      "grade": "Team 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-22",
+      "grade": "Team 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-29",
+      "grade": "Team 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-05",
+      "grade": "Team 01",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-12",
+      "grade": "Team 01",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "PRATIKSHA",
+        "Vighnesh",
+        "Jasvin"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-06",
+      "grade": "Team 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-13",
+      "grade": "Team 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-20",
+      "grade": "Team 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-27",
+      "grade": "Team 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-04",
+      "grade": "Team 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-11",
+      "grade": "Team 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-18",
+      "grade": "Team 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-25",
+      "grade": "Team 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-08",
+      "grade": "Team 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-15",
+      "grade": "Team 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-22",
+      "grade": "Team 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-29",
+      "grade": "Team 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-05",
+      "grade": "Team 02",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-12",
+      "grade": "Team 02",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Aarya",
+        "Rutuja",
+        "BHAVIKA"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-05",
+      "grade": "Batch 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-12",
+      "grade": "Batch 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-19",
+      "grade": "Batch 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-26",
+      "grade": "Batch 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-03",
+      "grade": "Batch 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-10",
+      "grade": "Batch 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-17",
+      "grade": "Batch 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-24",
+      "grade": "Batch 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-07",
+      "grade": "Batch 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-14",
+      "grade": "Batch 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-21",
+      "grade": "Batch 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-28",
+      "grade": "Batch 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-04",
+      "grade": "Batch 03",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-11",
+      "grade": "Batch 03",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Meryl",
+        "Kunal",
+        "Shilpa",
+        "Shraddha",
+        "Suyash"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-05",
+      "grade": "Team 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-12",
+      "grade": "Team 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-19",
+      "grade": "Team 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-26",
+      "grade": "Team 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-03",
+      "grade": "Team 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-10",
+      "grade": "Team 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-17",
+      "grade": "Team 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-24",
+      "grade": "Team 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-07",
+      "grade": "Team 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-14",
+      "grade": "Team 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-21",
+      "grade": "Team 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-28",
+      "grade": "Team 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-04",
+      "grade": "Team 03",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-11",
+      "grade": "Team 03",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Rupesh",
+      "teachers": [
+        "Suraj",
+        "Manisha D",
+        "Prerna P",
+        "Ripika"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-05",
+      "grade": "Batch 04",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-12",
+      "grade": "Batch 04",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-19",
+      "grade": "Batch 04",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-26",
+      "grade": "Batch 04",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-03",
+      "grade": "Batch 04",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-10",
+      "grade": "Batch 04",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-17",
+      "grade": "Batch 04",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-24",
+      "grade": "Batch 04",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-07",
+      "grade": "Batch 04",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-14",
+      "grade": "Batch 04",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-21",
+      "grade": "Batch 04",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-28",
+      "grade": "Batch 04",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-04",
+      "grade": "Batch 04",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-11",
+      "grade": "Batch 04",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "KHUSHI",
+        "DAKSHATA",
+        "Harshada",
+        "Shubhra"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-06",
+      "grade": "Group 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-13",
+      "grade": "Group 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-20",
+      "grade": "Group 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-27",
+      "grade": "Group 01",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-04",
+      "grade": "Group 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-11",
+      "grade": "Group 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-18",
+      "grade": "Group 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-25",
+      "grade": "Group 01",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-08",
+      "grade": "Group 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-15",
+      "grade": "Group 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-22",
+      "grade": "Group 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-29",
+      "grade": "Group 01",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-05",
+      "grade": "Group 01",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-12",
+      "grade": "Group 01",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Sudha",
+        "Kirat",
+        "Gitanjali",
+        "Harshika",
+        "Jagruti"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-05",
+      "grade": "Batch 05",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-12",
+      "grade": "Batch 05",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-19",
+      "grade": "Batch 05",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-26",
+      "grade": "Batch 05",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-03",
+      "grade": "Batch 05",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-10",
+      "grade": "Batch 05",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-17",
+      "grade": "Batch 05",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-24",
+      "grade": "Batch 05",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-07",
+      "grade": "Batch 05",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-14",
+      "grade": "Batch 05",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-21",
+      "grade": "Batch 05",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-28",
+      "grade": "Batch 05",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-04",
+      "grade": "Batch 05",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-11",
+      "grade": "Batch 05",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Manisha P",
+        "Prerna M",
+        "Mahalaxmi",
+        "Pragati"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-06",
+      "grade": "Batch 06",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-13",
+      "grade": "Batch 06",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-20",
+      "grade": "Batch 06",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-27",
+      "grade": "Batch 06",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-04",
+      "grade": "Batch 06",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-11",
+      "grade": "Batch 06",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-18",
+      "grade": "Batch 06",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-25",
+      "grade": "Batch 06",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-08",
+      "grade": "Batch 06",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-15",
+      "grade": "Batch 06",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-22",
+      "grade": "Batch 06",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-29",
+      "grade": "Batch 06",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-04",
+      "grade": "Batch 06",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-11",
+      "grade": "Batch 06",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Manisha",
+      "teachers": [
+        "Sumedha",
+        "MANISHA I.",
+        "Simaran",
+        "Swamini"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-01",
+      "date": "2026-06-06",
+      "grade": "Group 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-13",
+      "grade": "Group 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-20",
+      "grade": "Group 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-27",
+      "grade": "Group 02",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-07-04",
+      "grade": "Group 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-11",
+      "grade": "Group 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-18",
+      "grade": "Group 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-25",
+      "grade": "Group 02",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-08",
+      "grade": "Group 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-15",
+      "grade": "Group 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-22",
+      "grade": "Group 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-29",
+      "grade": "Group 02",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-31",
+      "date": "2026-09-05",
+      "grade": "Group 02",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-07",
+      "date": "2026-09-12",
+      "grade": "Group 02",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "AACHAL",
+        "RIGVEDI",
+        "PRACHI",
+        "Snehal k"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-08",
+      "grade": "Group 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-15",
+      "grade": "Group 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-22",
+      "grade": "Group 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-06-29",
+      "grade": "Group 03",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-06",
+      "grade": "Group 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-13",
+      "grade": "Group 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-20",
+      "grade": "Group 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-27",
+      "date": "2026-07-27",
+      "grade": "Group 03",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-03",
+      "grade": "Group 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-10",
+      "grade": "Group 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-17",
+      "grade": "Group 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-24",
+      "grade": "Group 03",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-21",
+      "date": "2026-09-21",
+      "grade": "Group 03",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-28",
+      "date": "2026-09-28",
+      "grade": "Group 03",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "ANJALI",
+        "Ashwini",
+        "Neha Yadav"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-08",
+      "date": "2026-06-08",
+      "grade": "Group 04",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-15",
+      "date": "2026-06-15",
+      "grade": "Group 04",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-22",
+      "date": "2026-06-22",
+      "grade": "Group 04",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-06-29",
+      "date": "2026-06-29",
+      "grade": "Group 04",
+      "topic": "Code of Conduct & Lesson Plan",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-06",
+      "date": "2026-07-06",
+      "grade": "Group 04",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-13",
+      "date": "2026-07-13",
+      "grade": "Group 04",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-20",
+      "date": "2026-07-20",
+      "grade": "Group 04",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-07-27",
+      "date": "2026-07-27",
+      "grade": "Group 04",
+      "topic": "Primary + Secondary Projects Making",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-03",
+      "date": "2026-08-03",
+      "grade": "Group 04",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-10",
+      "date": "2026-08-10",
+      "grade": "Group 04",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-17",
+      "date": "2026-08-17",
+      "grade": "Group 04",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-08-24",
+      "date": "2026-08-24",
+      "grade": "Group 04",
+      "topic": "Softwares",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-21",
+      "date": "2026-09-21",
+      "grade": "Group 04",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "week": "2026-09-28",
+      "date": "2026-09-28",
+      "grade": "Group 04",
+      "topic": "3D Printing (First 2 Weeks)",
+      "activity": "",
+      "trainer": "Aparna",
+      "teachers": [
+        "Nisha",
+        "Sanika",
+        "Shalan",
+        "Sanmiksha"
+      ],
+      "addedAt": "2026-11-19T00:00:00.000Z"
     }
   ]
 };
