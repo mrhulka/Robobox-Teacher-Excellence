@@ -34,12 +34,21 @@ no module graph, no build tooling beyond `tsc`. Load order (set in `index.html`)
 |---------|---------------|--------------|
 | **Teacher** | Geofenced check-in/out (100 m; can check in at one school, out at another), weekly **lesson plans** with progress updates, attendance calendar (present / late / absent / leave / holiday) + leave, component requests with delivery tracking, school events, updates. | **No** |
 | **Coordinator** | Their teachers only: scores, trend, action plans, lesson-plan compliance; geofenced visits → feedback form (action plan + next visit required, follow-up added to the calendar); calendar; **own leave** + their teachers' leave (view only); school events on the dashboard; updates. | Their teachers' — not their own |
-| **Parth (CEO) / Manish** | Overview (incl. Operations KPI and school events), all teachers, coordinator scores, **leave approvals for teachers and coordinators**, lesson-plan loading, reports. | Everything |
+| **Parth (CEO) / Manish** | Overview (incl. Operations KPI and school events), all teachers, coordinator scores, **leave approvals for teachers and coordinators**, lesson-plan loading (Excel upload), reports. **Parth only:** the profile repository + birthday calendar (*Teachers → Profiles*, Excel download). | Everything |
 | **Outsight** | Overview, all teachers, reports, updates. | Teacher scores only |
 | **Operations** | All component requests: confirm an expected date (the teacher sees it), mark fulfilled, Excel export, fulfilment KPI. | No |
 | **HR** | Publishes official updates, the holiday list and the library (handbook). | No |
 
-Leadership names and who is "top" live in `CONFIG.leaders`. Operations and HR are one shared sign-in each.
+Leadership names, who is "top" and who sees profiles (`profiles: true`, Parth) live in `CONFIG.leaders`. Operations and HR are one shared sign-in each.
+
+## My profile & birthdays
+Every user can open **My profile** by tapping their name in the top bar. For **teachers and coordinators it is
+compulsory**: until full name, education, birthday and location are saved, the app shows only the profile form.
+Education and location are prefilled for the 37 teachers listed in `TEACHERS.xlsx` (training sheet) — they just
+check and add their birthday. Coordinators see their teachers' upcoming birthdays on *My teachers*, as pink dots
+on the *Calendar*, and each teacher's profile on their detail page. Parth sees birthdays on the Overview, and
+*Teachers → Profiles* holds the whole repository (completion count, missing profiles, birthday calendar for the
+year ahead) with an `.xlsx` download.
 
 ## Lesson plans
 Seeded from `TEACHERS.xlsx` → *Location & Training Schedule*: each batch (Batch 01–06, Team 01–03,
@@ -49,8 +58,11 @@ Mechatronics, Doubt Solving). 186 sessions; each teacher sees only their batch, 
 month-by-month schedule. Sheet names are matched to app teachers (6 spelling variants mapped in the
 seed script, e.g. ACHAL → AACHAL); Group 02's two September sessions dated 5/12 Aug are read as 5/12 Sep.
 
-More sessions (e.g. the empty Nov–Jan columns) are added by Parth or Manish on *Teachers → Lesson plans*
-by pasting rows from Excel — `Date or Week · Batch or Grade · Topic · Activity`. A batch name inherits
+More sessions (e.g. the empty Nov–Jan columns) are added by Parth or Manish on *Teachers → Lesson plans*:
+download the **blank template** (or **current plans**, same columns), edit it in Excel and **upload** it — or paste
+rows directly. Columns: `Date or week · Batch or grade · Topic · Activity`; a row for an existing week + batch
+replaces that session, so re-uploading the edited current-plans file updates in place. The `.xlsx` reader is built
+in (no library; first sheet only; dates typed in Excel are understood). A batch name inherits
 that batch's teachers and trainer; a grade applies to everyone. Teachers mark each session *Done /
 Partly done / Not done* by Saturday; a reason is required for anything not done and for any late
 update. Coordinators and leadership see who updated; a week counts only if its plan was published

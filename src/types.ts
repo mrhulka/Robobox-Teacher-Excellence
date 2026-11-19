@@ -7,7 +7,7 @@ type RagOrNone = RagKey | 'none';
 
 interface School { id: string; name: string; mod: string; mapLink: string; locNote: string; lat: number | null; lng: number | null; teachers: string[]; }
 interface Teacher { name: string; mod: string; schools: string[]; }
-interface SeedData { moderators: string[]; schools: School[]; teachers: Teacher[]; lessons: LessonPlan[]; }
+interface SeedData { moderators: string[]; schools: School[]; teachers: Teacher[]; lessons: LessonPlan[]; profileHints: Record<string, { education?: string; location?: string }>; }
 
 interface User { role: Role; name: string; mod?: string; }
 
@@ -38,6 +38,8 @@ interface SchoolEvent { id?: string; school: string; teacher: string; type: stri
 // `teachers` limits a plan to that batch's teachers; without it the plan is for every teacher.
 interface LessonPlan { id?: string; week: string; grade: string; topic: string; activity: string; addedAt?: string; date?: string; trainer?: string; teachers?: string[]; }
 interface PlanUpdate { id?: string; teacher: string; week: string; grade: string; status: 'Done' | 'Partly done' | 'Not done' | 'Not my class'; reason: string; at: string; late: boolean; }
+// My profile — compulsory for teachers and coordinators (keyed by role + login name).
+interface Profile { id?: string; role: Role; name: string; fullName: string; education: string; birthday: string; location: string; updatedAt: string; }
 interface VisitPlan { id?: string; mod: string; school: string; date: string; note?: string; teacher?: string; status: 'Planned' | 'Done'; }
 
 // Every collection the store holds. Keys double as STORE.get() arguments.
@@ -46,11 +48,11 @@ interface Collections {
   attendance: Attendance[]; feedback: Feedback[]; leaves: Leave[];
   requests: Requisition[]; tasks: Task[]; materials: Material[]; plans: VisitPlan[];
   notices: Notice[]; holidays: Holiday[]; events: SchoolEvent[];
-  lessons: LessonPlan[]; planUpdates: PlanUpdate[];
+  lessons: LessonPlan[]; planUpdates: PlanUpdate[]; profiles: Profile[];
 }
 
 interface Kit { id: string; name: string; items: [string, number | string][]; } // [component, standard kit qty]
-interface Leader { name: string; title: string; top: boolean; } // top = sees coordinator scores, approves leave, loads lesson plans
+interface Leader { name: string; title: string; top: boolean; profiles?: boolean; } // profiles = sees every profile + birthdays, downloads the repository // top = sees coordinator scores, approves leave, loads lesson plans
 
 interface AppConfig {
   geofenceMeters: number;

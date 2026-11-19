@@ -8,7 +8,7 @@ const CONFIG = {
     workDays: [1, 2, 3, 4, 5], // Mon–Fri (0 = Sunday). Days outside this are never counted as absent.
     ayStart: '2026-06-15', // Monday of 'Week 1' when lesson plans are numbered by week — confirm the AY start.
     leaders: [
-        { name: 'Parth', title: 'CEO', top: true },
+        { name: 'Parth', title: 'CEO', top: true, profiles: true },
         { name: 'Manish', title: 'Head, Teacher Network', top: true },
         { name: 'Outsight', title: 'Outsight team', top: false },
     ],

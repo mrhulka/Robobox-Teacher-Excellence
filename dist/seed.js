@@ -3604,5 +3604,150 @@ const SEED = {
             ],
             "addedAt": "2026-11-19T00:00:00.000Z"
         }
-    ]
+    ],
+    "profileHints": {
+        "Tejaswini": {
+            "location": "Kalyan W",
+            "education": "Btech"
+        },
+        "Meet": {
+            "location": "Dombivli",
+            "education": "Btech"
+        },
+        "Seema": {
+            "location": "Shahad",
+            "education": "BE"
+        },
+        "SNEHAL B": {
+            "location": "Kharghar",
+            "education": "BA"
+        },
+        "Bharati": {
+            "location": "Kalyan W",
+            "education": "BE"
+        },
+        "JITU": {
+            "location": "Ghatkopar",
+            "education": "MSc Phy"
+        },
+        "SRIVALLI": {
+            "location": "Andheri",
+            "education": "BE"
+        },
+        "PRATIKSHA": {
+            "location": "Thane",
+            "education": "BTech"
+        },
+        "Vighnesh": {
+            "location": "Dombivli",
+            "education": "MSc CS"
+        },
+        "Aarya": {
+            "location": "Kharadi Pune",
+            "education": "Btech"
+        },
+        "Rutuja": {
+            "location": "Kharadi Pune",
+            "education": "BTech"
+        },
+        "BHAVIKA": {
+            "location": "Andheri",
+            "education": "BSc CS"
+        },
+        "Meryl": {
+            "location": "Goregaon",
+            "education": "MCA"
+        },
+        "Shilpa": {
+            "location": "Kalyan W",
+            "education": "BE"
+        },
+        "Suraj": {
+            "location": "Thane",
+            "education": "BTech"
+        },
+        "Manisha D": {
+            "location": "Santacruz",
+            "education": "BE"
+        },
+        "KHUSHI": {
+            "location": "Thane"
+        },
+        "DAKSHATA": {
+            "location": "Airoli",
+            "education": "BE"
+        },
+        "Shubhra": {
+            "location": "Thakurli",
+            "education": "BSc CS"
+        },
+        "Sudha": {
+            "location": "Kalyan W",
+            "education": "BCA"
+        },
+        "Gitanjali": {
+            "location": "Dombivli",
+            "education": "MCA"
+        },
+        "Harshika": {
+            "location": "Dombivli"
+        },
+        "Manisha P": {
+            "location": "Kalyan W",
+            "education": "BE"
+        },
+        "Mahalaxmi": {
+            "location": "Sion"
+        },
+        "Pragati": {
+            "location": "Sanpada",
+            "education": "MCA"
+        },
+        "Sumedha": {
+            "location": "Hadapsar Pune",
+            "education": "BE"
+        },
+        "MANISHA I.": {
+            "location": "Thane",
+            "education": "BE"
+        },
+        "Simaran": {
+            "location": "Kalyan W"
+        },
+        "Swamini": {
+            "location": "Vikhroli",
+            "education": "BE"
+        },
+        "AACHAL": {
+            "location": "Kharghar",
+            "education": "BE"
+        },
+        "RIGVEDI": {
+            "location": "Sanpada",
+            "education": "Dip. Elect"
+        },
+        "PRACHI": {
+            "location": "Vikhroli",
+            "education": "Bed"
+        },
+        "Snehal k": {
+            "location": "Dombivli",
+            "education": "BSc CS"
+        },
+        "ANJALI": {
+            "location": "Mulund",
+            "education": "Bcom"
+        },
+        "Ashwini": {
+            "location": "Worli"
+        },
+        "Shalan": {
+            "location": "Wakad Pune",
+            "education": "MCA"
+        },
+        "Sanmiksha": {
+            "location": "Kurla",
+            "education": "BEd"
+        }
+    }
 };

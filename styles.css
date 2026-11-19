@@ -407,3 +407,11 @@ input[type=file]{padding:10px;font-size:14px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media(prefers-reduced-transparency:reduce){.topbar,.tabbar,.rag-sticky{background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none}}
 @media(prefers-contrast:more){:root{--muted:#3F4756;--line:#BFC6CF;--line-2:#D3D8DF}}
+/* My profile + birthdays */
+button.user-chip{background:none;border:0;padding:4px 8px 4px 4px;border-radius:999px;font:inherit;color:inherit;text-align:left;cursor:pointer}
+button.user-chip:hover:not(:disabled){background:var(--line-2)}
+button.user-chip:disabled{cursor:default}
+.d-bday{background:#DB2777}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;margin:0;font-size:14px}
+.kv dt{color:var(--muted)}.kv dd{margin:0;font-weight:600;min-width:0;overflow-wrap:anywhere}
+@media (max-width:420px){.segtab .i{display:none}.segtab{padding:0 8px;font-size:13.5px}}

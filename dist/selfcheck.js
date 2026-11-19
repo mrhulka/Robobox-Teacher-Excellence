@@ -106,5 +106,21 @@
     const done = [['2026-11-02', '2026-11-04'], ['2026-11-02', '2026-11-09'], ['2026-11-10', '2026-11-13']].map(([a, b]) => days(a, b));
     ok(done.join() === '2,7,3', 'turnaround days');
     ok(Math.round((100 * done.filter((d) => d <= sla).length) / done.length) === 67, 'share fulfilled within SLA');
+    // Birthdays (kept in sync with app.ts nextBirthday): next occurrence on/after today; 29 Feb → 28 Feb in non-leap years.
+    const nextB = (bday, from) => {
+        const m = Number(bday.slice(5, 7)), d = Number(bday.slice(8, 10));
+        const on = (y) => L(new Date(y, m - 1, m === 2 && d === 29 && new Date(y, 1, 29).getMonth() !== 1 ? 28 : d));
+        const y = Number(from.slice(0, 4));
+        return on(y) >= from ? on(y) : on(y + 1);
+    };
+    ok(nextB('1995-11-25', '2026-11-19') === '2026-11-25', 'birthday later this year');
+    ok(nextB('1995-11-19', '2026-11-19') === '2026-11-19', 'birthday today counts as today');
+    ok(nextB('1995-01-03', '2026-11-19') === '2027-01-03', 'birthday already passed → next year');
+    ok(nextB('2000-02-29', '2026-11-19') === '2027-02-28' && nextB('2000-02-29', '2027-03-01') === '2028-02-29', '29 Feb birthdays');
+    // Uploaded .xlsx cells (kept in sync with app.ts colIndex / excelDate).
+    const colIdx = (ref) => (ref.match(/^[A-Z]+/) || ['A'])[0].split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+    ok([0, 25, 26, 27, 701, 702].every((i) => colIdx(col(i) + '7') === i), 'cell ref → column index round-trips colName');
+    const xDate = (n) => new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000).toISOString().slice(0, 10);
+    ok(xDate(46345) === '2026-11-19' && xDate(45658) === '2025-01-01', 'Excel date serials');
     console.log('selfcheck OK');
 })();

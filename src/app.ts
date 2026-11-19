@@ -59,6 +59,7 @@ const ICONS: Record<string, string> = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
   pinI: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
   trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
   target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
 };
 const ic = (n: string, s = 20) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
@@ -330,7 +331,7 @@ function tabsFor(u: User): Tab[] {
 const TAB: Partial<Record<Role, string>> = {};
 let SEL: string | null = null; // teacher detail opened by a coordinator or leadership
 function go(tab: string): void {
-  const u = SESSION.get()!; TAB[u.role] = tab; SEL = null; render(); entered();
+  const u = SESSION.get()!; TAB[u.role] = tab; SEL = null; PROF = false; render(); entered();
   (document.querySelector('h1') as HTMLElement | null)?.focus({ preventScroll: true });
 }
 function openTeacher(name: string): void {
@@ -344,8 +345,10 @@ function render(): void {
   const u = SESSION.get();
   const app = $('app');
   if (!u) { app.innerHTML = viewLogin(); return; }
-  const tabs = tabsFor(u);
-  const active = tabs.some((t) => t.id === TAB[u.role]) ? TAB[u.role]! : tabs[0].id;
+  // Teachers and coordinators must complete My profile before anything else.
+  const gate = mustProfile(u) && !profileOf(u.role, u.name);
+  const tabs = gate ? [] : tabsFor(u);
+  const active = gate ? '' : tabs.some((t) => t.id === TAB[u.role]) ? TAB[u.role]! : tabs[0].id;
   // Count bubble on Updates for new HR posts and library items; cleared once Updates is opened.
   const unread = active === 'upd' ? 0 : unreadUpdates(u);
   const dot = (t: Tab) => t.id === 'upd' && unread ? `<span class="tab-badge" aria-hidden="true">${unread > 9 ? '9+' : unread}</span><span class="sr-only">, ${unread} new</span>` : '';
@@ -354,13 +357,13 @@ function render(): void {
     <header class="topbar">
       <img class="logo-img" src="assets/logo-mark.webp" width="75" height="28" alt="The Robobox">
       <nav class="topnav" aria-label="Main">${tabs.map((t) => `<button class="${t.id === active ? 'on' : ''}" ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 18)}<span>${t.label}</span>${dot(t)}</button>`).join('')}</nav>
-      <div class="user-chip"><span class="avatar sm" aria-hidden="true">${initials(u.name)}</span><span class="who"><b>${esc(u.name)}</b><small>${esc(roleLabel)}</small></span></div>
+      <button class="user-chip" onclick="openProfile()" ${gate ? 'disabled' : ''} aria-label="My profile — ${esc(u.name)}, ${esc(roleLabel)}"><span class="avatar sm" aria-hidden="true">${initials(u.name)}</span><span class="who"><b>${esc(u.name)}</b><small>${esc(roleLabel)}</small></span></button>
       <button class="icon-btn" onclick="logout()" aria-label="Sign out" title="Sign out">${ic('logout')}</button>
     </header>
-    <main class="wrap" id="main">${VIEWS[u.role + ':' + active](u)}</main>
-    <nav class="tabbar" aria-label="Main">${tabs.map((t) => `<button class="tab${t.id === active ? ' on' : ''}${t.short ? ' s-' + t.at : ''}" ${t.short ? `aria-label="${t.label}"` : ''} ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 22)}<span class="lbl">${t.label}</span>${t.short ? `<span class="lbl-s" aria-hidden="true">${t.short}</span>` : ''}${dot(t)}</button>`).join('')}</nav>`;
+    <main class="wrap" id="main">${gate || PROF ? profileView(u, gate) : VIEWS[u.role + ':' + active](u)}</main>
+    ${gate ? '' : `<nav class="tabbar" aria-label="Main">${tabs.map((t) => `<button class="tab${t.id === active ? ' on' : ''}${t.short ? ' s-' + t.at : ''}" ${t.short ? `aria-label="${t.label}"` : ''} ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 22)}<span class="lbl">${t.label}</span>${t.short ? `<span class="lbl-s" aria-hidden="true">${t.short}</span>` : ''}${dot(t)}</button>`).join('')}</nav>`}`;
 }
-function logout(): void { SESSION.clear(); (Object.keys(TAB) as Role[]).forEach((k) => delete TAB[k]); SEL = null; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t) t.innerHTML = ''; render(); }
+function logout(): void { SESSION.clear(); (Object.keys(TAB) as Role[]).forEach((k) => delete TAB[k]); SEL = null; PROF = false; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t) t.innerHTML = ''; render(); }
 
 /* ================= LOGIN ================= */
 let LOGIN: { role: Role | null } = { role: null };
@@ -962,8 +965,10 @@ function plansAdmin(u: User): string {
   const cur = weekOf(todayStr()); const weeks = [...new Set(STORE.get('lessons').map((p) => p.week))].sort().reverse();
   return complianceCard(STORE.get('teachers').map((t) => t.name)) +
     (isTop(u) ? `<section class="card"><h3 class="card-title">Load lesson plans</h3>
-      <p class="hint" style="margin-top:0">In Excel, select the rows <b>Week · Grade · Topic · Activity</b>, copy, and paste below. Week is a number (Week 1 = ${fmtD(weekOf(CONFIG.ayStart))}) or any date in that week — a date becomes the session date. Use a batch name (e.g. <b>Batch 01</b>) to schedule that batch's teachers, or a grade for everyone. A plan for the same week and group is replaced.</p>
-      <button class="btn ghost sm" onclick="planTemplate()">${ic('download', 16)}Excel template</button>
+      <p class="hint" style="margin-top:0">Download the blank template (or the current plans), fill it in Excel and upload it — or copy the rows <b>Date or week · Batch or grade · Topic · Activity</b> and paste them below. Week is a number (Week 1 = ${fmtD(weekOf(CONFIG.ayStart))}) or any date in that week — a date becomes the session date. Use a batch name (e.g. <b>Batch 01</b>) to schedule that batch's teachers, or a grade for everyone. A plan for the same week and group is replaced.</p>
+      <div class="btn-row"><button class="btn ghost sm" onclick="planTemplate()">${ic('download', 16)}Blank template</button><button class="btn ghost sm" onclick="exportPlans()">${ic('download', 16)}Current plans</button>
+        <button class="btn sm" onclick="$('lpFile').click()">${ic('upload', 16)}Upload Excel</button></div>
+      <input type="file" id="lpFile" accept=".xlsx,.csv" hidden onchange="uploadPlans(this)">
       <label class="field-l" for="lpPaste">Paste rows</label><textarea id="lpPaste" class="paste" rows="7" placeholder="Week 24&#9;Grade 5&#9;Line follower robot&#9;Build and test with IR sensors"></textarea>
       <p class="err" id="lpPasteErr" role="alert"></p>
       <button class="btn block" onclick="loadPlans()">${ic('upload', 18)}Load plans</button></section>` : '') +
@@ -971,25 +976,172 @@ function plansAdmin(u: User): string {
       return `<div class="row-item${isTop(u) ? ' wrap-end' : ''}">${dateChip(w)}<span class="row-main"><b>Week of ${fmtD(w)}${w === cur ? ' · this week' : ''}</b><small>${[...new Set(ps.map((p) => p.topic))].map((t) => `${esc(t)} — ${plural(ps.filter((p) => p.topic === t).length, 'group')}`).join(' · ')}</small></span>${isTop(u) ? `<span class="row-end">${twoTap('wk' + w, `delPlanWeek('${w}')`, 'Remove week')}</span>` : ''}</div>`; }).join('')
       : empty('book', 'No lesson plans yet', isTop(u) ? 'Paste rows from Excel above.' : 'Plans loaded by Parth or Manish appear here.')}</div>`;
 }
-function loadPlans(): void {
+function loadPlans(): void { applyPlans($('lpPaste').value, 'Paste at least one row.'); }
+// Pasted text and uploaded files both end up here as tab-separated rows.
+function applyPlans(text: string, none: string): void {
   if (!isTop(SESSION.get()!)) return;
-  const { plans, errors } = parsePlans($('lpPaste').value);
+  const { plans, errors } = parsePlans(text);
   if (errors.length) { setErr('lpPasteErr', errors.slice(0, 3).join(' · ') + (errors.length > 3 ? ` · +${errors.length - 3} more` : '')); return; }
-  if (!plans.length) { setErr('lpPasteErr', 'Paste at least one row.'); return; }
+  if (!plans.length) { setErr('lpPasteErr', none); return; }
+  setErr('lpPasteErr', '');
   const addedAt = new Date().toISOString();
+  // A known batch name inherits that batch's teachers and trainer (looked up before anything is replaced).
+  const batches: Record<string, LessonPlan> = {};
+  STORE.get('lessons').forEach((x) => { if (x.teachers) batches[x.grade.toLowerCase()] = x; });
   plans.forEach((p) => {
     STORE.get('lessons').filter((x) => x.week === p.week && x.grade === p.grade).forEach((x) => STORE.remove('lessons', x.id!));
-    // A known batch name inherits that batch's teachers and trainer.
-    const batch = STORE.get('lessons').find((x) => x.grade.toLowerCase() === p.grade.toLowerCase() && x.teachers);
+    const batch = batches[p.grade.toLowerCase()];
     STORE.add('lessons', { ...p, addedAt, teachers: batch?.teachers, trainer: batch?.trainer, date: p.date });
   });
   const weeks = new Set(plans.map((p) => p.week)).size;
   flash('ok', `Loaded ${plural(plans.length, 'plan')} across ${plural(weeks, 'week')}.`); render();
 }
 function delPlanWeek(wk: string): void { STORE.get('lessons').filter((p) => p.week === wk).forEach((p) => STORE.remove('lessons', p.id!)); PENDING_DEL = ''; flash('ok', `Week of ${fmtD(wk)} removed.`); render(); }
-function planTemplate(): void {
-  downloadXLSX('robobox-lesson-plan-template.xlsx', [['Week', 'Grade', 'Topic', 'Activity / objective'],
-    ['Week 1', 'Grade 5', 'Introduction to sensors', 'Build an IR obstacle detector'], ['Week 1', 'Grade 6', 'Motors and gears', 'Assemble a geared crawler']], 'Lesson plans');
+const PLAN_HEAD = ['Date or week', 'Batch or grade', 'Topic', 'Activity / objective'];
+function planTemplate(): void { downloadXLSX('robobox-lesson-plan-template.xlsx', [PLAN_HEAD], 'Lesson plans'); }
+// Same columns as the template, so Parth can edit this file and upload it back.
+function exportPlans(): void {
+  const rows = STORE.get('lessons').slice().sort((a, b) => (a.date || a.week).localeCompare(b.date || b.week) || byGrade(a, b))
+    .map((p) => [p.date || p.week, p.grade, p.topic, p.activity]);
+  downloadXLSX(`robobox-lesson-plans-${todayStr()}.xlsx`, [PLAN_HEAD, ...rows], 'Lesson plans');
+}
+async function uploadPlans(input: HTMLInputElement): Promise<void> {
+  const f = input.files?.[0]; input.value = ''; if (!f) return;
+  try {
+    const rows = /\.xlsx$/i.test(f.name) ? xlsxRows(await unzipXml(await f.arrayBuffer())) : (await f.text()).split(/\r?\n/).map((l) => l.split(l.includes('\t') ? '\t' : ','));
+    // Typed dates arrive as Excel day serials; small numbers stay week numbers.
+    const cell = (c: string, i: number) => i === 0 && /^\d{5}(\.\d+)?$/.test(c.trim()) ? excelDate(Number(c)) : c.replace(/[\t\r\n]+/g, ' ');
+    applyPlans(rows.map((r) => r.map(cell).join('\t')).join('\n'), `${f.name} has no plan rows under the header.`);
+  } catch (e) { setErr('lpPasteErr', `Couldn't read ${f.name} — save it as .xlsx and try again.`); }
+}
+
+/* ================= MY PROFILE + BIRTHDAYS ================= */
+const mustProfile = (u: User) => u.role === 'teacher' || u.role === 'mod'; // can't use the app until saved
+const canSeeProfiles = (u: User) => u.role === 'ceo' && !!leaderOf(u.name)?.profiles; // Parth
+const profileOf = (role: Role, name: string) => STORE.get('profiles').find((p) => p.role === role && p.name.toLowerCase() === name.toLowerCase());
+const titleCase = (s: string) => s.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+let PROF = false;
+function openProfile(): void { PROF = true; render(); entered(); }
+function closeProfile(): void { PROF = false; render(); entered(); }
+function profileView(u: User, gate: boolean): string {
+  const p = profileOf(u.role, u.name); const h = (u.role === 'teacher' && SEED.profileHints[u.name]) || {};
+  const field = (id: string, label: string, val: string, extra: string) =>
+    `<label class="field-l" for="${id}">${label}</label><input id="${id}" value="${esc(val)}" ${extra}><p class="err" id="${id}Err" role="alert"></p>`;
+  return (gate ? '' : backLink('Back', 'closeProfile()')) +
+    pageHead('My profile', gate ? `Welcome, ${esc(titleCase(u.name))}. Complete your profile to start using the portal — it takes a minute.` : 'Keep your details up to date.') +
+    `<section class="card">
+      ${field('pfName', 'Full name', p?.fullName || titleCase(u.name), 'autocomplete="name" placeholder="First and last name"')}
+      ${field('pfEdu', 'Education', p?.education || h.education || '', 'placeholder="e.g. B.Tech, Electronics"')}
+      ${field('pfBday', 'Birthday', p?.birthday || '', `type="date" max="${todayStr()}"`)}
+      ${field('pfLoc', 'Location', p?.location || h.location || '', 'autocomplete="address-level2" placeholder="Area, city — e.g. Dombivli, Thane"')}
+      <button class="btn block" onclick="saveProfile()">${ic('check', 18)}${gate ? 'Save and continue' : 'Save profile'}</button>
+      ${p ? `<p class="hint">Last updated ${fmtD(p.updatedAt.slice(0, 10))}.</p>` : ''}
+    </section>`;
+}
+function saveProfile(): void {
+  const u = SESSION.get()!; const val = (id: string) => $(id).value.trim().replace(/\s+/g, ' ');
+  const f = { fullName: val('pfName'), education: val('pfEdu'), birthday: $('pfBday').value, location: val('pfLoc') };
+  const age = f.birthday ? dayDiff(f.birthday, todayStr()) / 365.25 : 0;
+  const errs: [string, string][] = [
+    ['pfName', f.fullName.length >= 2 ? '' : 'Enter your full name.'],
+    ['pfEdu', f.education ? '' : 'Enter your highest qualification.'],
+    ['pfBday', !f.birthday ? 'Enter your date of birth.' : age < 16 || age > 80 ? 'Check the year — that date gives an age outside 16–80.' : ''],
+    ['pfLoc', f.location ? '' : 'Enter where you live (area, city).'],
+  ];
+  errs.forEach(([id, m]) => setErr(id + 'Err', m));
+  const bad = errs.find(([, m]) => m); if (bad) { $(bad[0]).focus(); return; }
+  const p = profileOf(u.role, u.name); const rec = { ...f, updatedAt: new Date().toISOString() };
+  if (p) STORE.update('profiles', p.id!, rec); else STORE.add('profiles', { role: u.role, name: u.name, ...rec });
+  PROF = false; flash('ok', p ? 'Profile updated.' : 'Profile saved — welcome!'); render(); entered();
+}
+// Next occurrence on or after `from`. 29 Feb birthdays fall on 28 Feb in non-leap years.
+function nextBirthday(bday: string, from: string): string {
+  const m = Number(bday.slice(5, 7)), d = Number(bday.slice(8, 10));
+  const on = (y: number) => isoLocal(new Date(y, m - 1, m === 2 && d === 29 && new Date(y, 1, 29).getMonth() !== 1 ? 28 : d));
+  const y = Number(from.slice(0, 4)); return on(y) >= from ? on(y) : on(y + 1);
+}
+// Coordinators: their own teachers. Parth: every teacher and coordinator.
+function birthdaysFor(u: User, from = todayStr()): { p: Profile; next: string; age: number }[] {
+  const mine = u.role === 'mod' ? teachersOfMod(u.name).map((t) => t.name.toLowerCase()) : null;
+  return STORE.get('profiles').filter((p) => p.birthday && (mine ? p.role === 'teacher' && mine.includes(p.name.toLowerCase()) : mustProfile(p)))
+    .map((p) => { const next = nextBirthday(p.birthday, from); return { p, next, age: Number(next.slice(0, 4)) - Number(p.birthday.slice(0, 4)) }; })
+    .sort((a, b) => a.next.localeCompare(b.next));
+}
+const whoLine = (p: Profile) => p.role === 'mod' ? 'Coordinator' : `Teacher · ${esc(STORE.teacher(p.name)?.mod || '')}`;
+function bdayRow(b: { p: Profile; next: string; age: number }): string {
+  const today = todayStr(); const days = dayDiff(today, b.next);
+  return `<div class="row-item">${dateChip(b.next)}<span class="row-main"><b>${esc(b.p.fullName)}</b><small>${whoLine(b.p)} · turns ${b.age}</small></span>
+    <span class="row-end">${days === 0 ? badge('Today', 'brand') : days === 1 ? badge('Tomorrow', 'blue') : `<span class="muted">in ${days} days</span>`}</span></div>`;
+}
+function birthdayCard(u: User, days: number): string {
+  const until = addDays(todayStr(), days); const bs = birthdaysFor(u).filter((b) => b.next <= until);
+  return `<h2 class="section-title">Birthdays · next ${days} days</h2><div class="card list">${bs.length ? bs.slice(0, 8).map(bdayRow).join('')
+    : empty('gift', 'No birthdays coming up', 'Birthdays appear once teachers complete their profile.')}</div>`;
+}
+function profileBlock(name: string): string {
+  const p = profileOf('teacher', name);
+  return `<h2 class="section-title">Profile</h2><section class="card">${p ? `<dl class="kv">
+      <dt>Full name</dt><dd>${esc(p.fullName)}</dd><dt>Education</dt><dd>${esc(p.education)}</dd>
+      <dt>Birthday</dt><dd>${parseD(p.birthday).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}</dd><dt>Location</dt><dd>${esc(p.location)}</dd></dl>`
+    : `<p class="hint" style="margin:0">Profile not completed yet — ${esc(name)} will be asked to fill it in at their next sign-in.</p>`}</section>`;
+}
+// Parth: the profile repository (teachers + coordinators) and the birthday calendar for the year ahead.
+function profilesAdmin(): string {
+  const people: [Role, string][] = [...STORE.get('moderators').map((m): [Role, string] => ['mod', m]), ...STORE.get('teachers').map((t): [Role, string] => ['teacher', t.name])];
+  people.sort(([r1, n1], [r2, n2]) => Number(!profileOf(r1, n1)) - Number(!profileOf(r2, n2))); // missing last
+  const done = people.filter(([r, n]) => profileOf(r, n)).length;
+  const all = birthdaysFor(SESSION.get()!); let month = '';
+  const cal = all.map((b) => { const mo = parseD(b.next).toLocaleDateString([], { month: 'long', year: 'numeric' }); const head = mo !== month ? `<p class="list-group">${mo}</p>` : ''; month = mo; return head + bdayRow(b); }).join('');
+  return `<div class="kpis">${kpi('Profiles complete', `${done}/${people.length}`, 'users')}${kpi('Missing', people.length - done, 'alert', people.length - done ? 'amber' : '')}</div>
+    <h2 class="section-title">Birthday calendar</h2><div class="card list">${cal || empty('gift', 'No birthdays yet', 'They fill in as profiles are completed.')}</div>
+    <h2 class="section-title">Profile repository</h2>${searchBox('pfList', 'Search name, education or location')}
+    <div class="card list" id="pfList">${people.map(([r, n]) => { const p = profileOf(r, n);
+      return `<div class="row-item" data-q="${esc([n, p?.fullName, p?.education, p?.location].join(' ').toLowerCase())}"><span class="avatar">${initials(p?.fullName || n)}</span>
+        <span class="row-main"><b>${esc(p?.fullName || n)}</b><small>${r === 'mod' ? 'Coordinator' : 'Teacher · ' + esc(STORE.teacher(n)?.mod || '')}${p ? ` · ${esc(p.education)} · ${esc(p.location)} · born ${fmtD(p.birthday)}` : ''}</small></span>
+        <span class="row-end">${p ? '' : badge('Missing', 'red')}</span></div>`; }).join('')}</div>`;
+}
+function reportProfiles(): void {
+  if (!canSeeProfiles(SESSION.get()!)) return;
+  const rows: unknown[][] = [['Login name', 'Full name', 'Role', 'Coordinator', 'Schools', 'Education', 'Birthday', 'Next birthday', 'Location', 'Profile updated']];
+  const add = (r: Role, n: string, coord: string, schools: string) => { const p = profileOf(r, n);
+    rows.push([n, p?.fullName || '', r === 'mod' ? 'Coordinator' : 'Teacher', coord, schools, p?.education || '', p?.birthday || '', p ? nextBirthday(p.birthday, todayStr()) : '', p?.location || '', p ? p.updatedAt.slice(0, 10) : 'MISSING']); };
+  STORE.get('moderators').forEach((m) => add('mod', m, '', schoolsOfMod(m).map((s) => s.name).join('; ')));
+  STORE.get('teachers').forEach((t) => add('teacher', t.name, t.mod, schoolsOfTeacher(t).map((s) => s.name).join('; ')));
+  downloadXLSX(`robobox-profiles-${todayStr()}.xlsx`, rows, 'Profiles');
+}
+
+/* ================= READING AN UPLOADED .xlsx (no library) ================= */
+// Unzips just the workbook parts we need; deflated entries go through the browser's DecompressionStream.
+async function unzipXml(buf: ArrayBuffer): Promise<Record<string, string>> {
+  const v = new DataView(buf), u8 = new Uint8Array(buf), out: Record<string, string> = {}, td = new TextDecoder();
+  let e = buf.byteLength - 22; while (e >= 0 && v.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('Not an .xlsx file');
+  for (let i = 0, p = v.getUint32(e + 16, true); i < v.getUint16(e + 10, true); i++) {
+    const method = v.getUint16(p + 10, true), size = v.getUint32(p + 20, true), nl = v.getUint16(p + 28, true), off = v.getUint32(p + 42, true);
+    const name = td.decode(u8.subarray(p + 46, p + 46 + nl)); p += 46 + nl + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+    if (!/^xl\/(sharedStrings|worksheets\/sheet\d+)\.xml$/.test(name)) continue;
+    const start = off + 30 + v.getUint16(off + 26, true) + v.getUint16(off + 28, true); const raw = u8.slice(start, start + size);
+    out[name] = td.decode(method === 0 ? raw : await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  }
+  return out;
+}
+const colIndex = (ref: string) => (ref.match(/^[A-Z]+/) || ['A'])[0].split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+// Excel stores dates as day serials (1 = 1900-01-01, with the 1900 leap-year bug → epoch 1899-12-30).
+const excelDate = (n: number) => new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000).toISOString().slice(0, 10);
+function xlsxRows(files: Record<string, string>): string[][] { // ponytail: first sheet only
+  const xml = (s: string) => new DOMParser().parseFromString(s, 'application/xml');
+  const text = (el: Element) => Array.from(el.getElementsByTagName('t')).map((t) => t.textContent || '').join('');
+  const ss = files['xl/sharedStrings.xml'] ? Array.from(xml(files['xl/sharedStrings.xml']).getElementsByTagName('si')).map(text) : [];
+  const sheet = Object.keys(files).filter((k) => k.includes('worksheets')).sort((a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10))[0];
+  if (!sheet) throw new Error('No worksheet found');
+  return Array.from(xml(files[sheet]).getElementsByTagName('row')).map((r) => {
+    const row: string[] = [];
+    Array.from(r.getElementsByTagName('c')).forEach((c, i) => {
+      const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0]?.textContent || '';
+      row[c.getAttribute('r') ? colIndex(c.getAttribute('r')!) : i] = t === 's' ? ss[Number(v)] || '' : t === 'inlineStr' ? text(c) : v;
+    });
+    return Array.from(row, (x) => x || '');
+  });
 }
 
 /* ================= OPERATIONS: component request fulfilment ================= */
@@ -1077,7 +1229,7 @@ function mTeachers(u: User): string {
       ${pending.length ? `<p class="hint">${pending.length} awaiting approval from Parth or Manish: ${pending.map((l) => esc(l.teacher)).join(', ')}.</p>` : ''}
     </section>` : '';
   return pageHead('My teachers', `${ts.length} teachers · ${schoolsOfMod(u.name).length} schools`, `<button class="btn ghost sm" onclick="reportCoordTeachers('${esc(u.name)}')">${ic('download', 16)}Report</button>`) +
-    leaveCard + complianceCard(names) + eventsCard(u, 'School events · next 2 weeks') + searchBox('tList', 'Search teachers') +
+    leaveCard + complianceCard(names) + eventsCard(u, 'School events · next 2 weeks') + birthdayCard(u, 30) + searchBox('tList', 'Search teachers') +
     `<div class="card list" id="tList">${ts.map((t) => {
       const rag = teacherRag(t.name); const lv = leaveOn(t.name);
       return `<button class="row-item tap" data-q="${esc(t.name.toLowerCase())}" onclick="openTeacher('${esc(t.name)}')"><span class="avatar">${initials(t.name)}</span>
@@ -1120,7 +1272,7 @@ function teacherDetail(u: User, name: string): string {
   return backLink(u.role === 'mod' ? 'My teachers' : 'All teachers', 'closeTeacher()') +
     pageHead(esc(name), esc(schoolsOfTeacher(t).map((s) => s.name).join(', ')) + (u.role === 'ceo' ? ` · Coordinator ${esc(t.mod)}` : '')) +
     (lv ? `<div class="notice info">${ic('calx', 18)}<span>On approved ${esc(lv.type.toLowerCase())} leave until ${fmtD(lv.to)}.</span></div>` : '') +
-    perfInner(name) + planHistory(name) +
+    perfInner(name) + (u.role === 'mod' || canSeeProfiles(u) ? profileBlock(name) : '') + planHistory(name) +
     (u.role === 'mod' ? `<h2 class="section-title">Tasks</h2>
       <section class="card"><label class="field-l" for="tkTitle">Assign a task</label><input id="tkTitle" placeholder="e.g. Submit Module 3 lesson plan">
         <div class="grid2"><div><label class="field-l" for="tkDue">Due</label><input id="tkDue" type="date" min="${todayStr()}"></div><div><label class="field-l" for="tkDetail">Detail</label><input id="tkDetail" placeholder="Optional"></div></div>
@@ -1258,20 +1410,21 @@ function mCalendar(u: User): string {
   const visits = STORE.get('feedback').filter((f) => f.mod === u.name);
   const names = teachersOfMod(u.name).map((t) => t.name);
   const leaves = STORE.get('leaves').filter((l) => names.includes(l.teacher) && l.status === 'Approved');
-  const events = eventsFor(u); const hols = STORE.get('holidays');
+  const events = eventsFor(u); const hols = STORE.get('holidays'); const bdays = birthdaysFor(u);
   const cells: string[] = [];
   for (let i = 0; i < lead; i++) cells.push('<span class="cal-pad"></span>');
   for (let d = 1; d <= dim; d++) {
     const iso = isoLocal(new Date(y, m, d));
     const p = plans.some((x) => x.date === iso && x.status === 'Planned'), v = visits.some((x) => x.date === iso), l = leaves.some((x) => leaveCovers(x, iso));
-    const e = events.some((x) => eventOn(x, iso)), h = hols.some((x) => x.date === iso);
-    cells.push(`<button class="cal-day${iso === today ? ' today' : ''}${iso === day ? ' sel' : ''}" onclick="calPick('${iso}')" aria-label="${fmtLong(iso)}${p ? ', visit planned' : ''}${v ? ', visited' : ''}${l ? ', teacher on leave' : ''}${e ? ', school event' : ''}${h ? ', holiday' : ''}" ${iso === day ? 'aria-pressed="true"' : ''}>
-      <span>${d}</span><span class="cal-dots">${p ? '<i class="d-plan"></i>' : ''}${v ? '<i class="d-visit"></i>' : ''}${e ? '<i class="d-event"></i>' : ''}${h ? '<i class="d-hol"></i>' : ''}${l ? '<i class="d-leave"></i>' : ''}</span></button>`);
+    const e = events.some((x) => eventOn(x, iso)), h = hols.some((x) => x.date === iso), b = bdays.some((x) => nextBirthday(x.p.birthday, iso) === iso);
+    cells.push(`<button class="cal-day${iso === today ? ' today' : ''}${iso === day ? ' sel' : ''}" onclick="calPick('${iso}')" aria-label="${fmtLong(iso)}${p ? ', visit planned' : ''}${v ? ', visited' : ''}${l ? ', teacher on leave' : ''}${e ? ', school event' : ''}${h ? ', holiday' : ''}${b ? ', birthday' : ''}" ${iso === day ? 'aria-pressed="true"' : ''}>
+      <span>${d}</span><span class="cal-dots">${p ? '<i class="d-plan"></i>' : ''}${v ? '<i class="d-visit"></i>' : ''}${e ? '<i class="d-event"></i>' : ''}${h ? '<i class="d-hol"></i>' : ''}${l ? '<i class="d-leave"></i>' : ''}${b ? '<i class="d-bday"></i>' : ''}</span></button>`);
   }
   const dayPlans = plans.filter((p) => p.date === day);
   const dayVisits = visits.filter((f) => f.date === day);
   const dayLeaves = leaves.filter((l) => leaveCovers(l, day));
   const dayEvents = events.filter((e) => eventOn(e, day)); const dayHols = hols.filter((h) => h.date === day);
+  const dayBdays = birthdaysFor(u, day).filter((x) => x.next === day);
   const upcoming = plans.filter((p) => p.status === 'Planned' && p.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
   const planRow = (p: VisitPlan, showDate: boolean) => `<div class="row-item"><span class="row-ic">${ic(p.teacher ? 'target' : 'pin', 18)}</span>
     <span class="row-main"><b>${esc(schoolName(p.school))}</b><small>${showDate ? fmtLong(p.date) + (p.note ? ' · ' : '') : ''}${p.note ? esc(p.note) : ''}</small></span>
@@ -1284,15 +1437,16 @@ function mCalendar(u: User): string {
         <button class="icon-btn" aria-label="Next month" onclick="calNav(1)">${ic('chevR')}</button></div>
       <div class="cal-grid cal-wk">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((w) => `<span>${w}</span>`).join('')}</div>
       <div class="cal-grid">${cells.join('')}</div>
-      <div class="cal-legend"><span><i class="d-plan"></i>Planned</span><span><i class="d-visit"></i>Visited</span><span><i class="d-event"></i>School event</span><span><i class="d-hol"></i>Holiday</span><span><i class="d-leave"></i>Teacher on leave</span></div>
+      <div class="cal-legend"><span><i class="d-plan"></i>Planned</span><span><i class="d-visit"></i>Visited</span><span><i class="d-event"></i>School event</span><span><i class="d-hol"></i>Holiday</span><span><i class="d-leave"></i>Teacher on leave</span><span><i class="d-bday"></i>Birthday</span></div>
     </section>
     <h2 class="section-title">${fmtLong(day)}</h2>
     <div class="card list">${dayHols.map((h) => `<div class="row-item"><span class="row-ic tile">${ic('sun', 18)}</span><span class="row-main"><b>${esc(h.name)}</b><small>Company holiday</small></span><span class="row-end">${badge('Holiday', 'red')}</span></div>`).join('')}
+      ${dayBdays.map(bdayRow).join('')}
       ${dayEvents.map((e) => eventRow(u, e)).join('')}
       ${dayPlans.map((p) => planRow(p, false)).join('')}
       ${dayVisits.map(visitRow).join('')}
       ${dayLeaves.map((l) => `<div class="row-item"><span class="avatar">${initials(l.teacher)}</span><span class="row-main"><b>${esc(l.teacher)}</b><small>${esc(l.type)} leave · until ${fmtD(l.to)}</small></span><span class="row-end">${badge('On leave', 'amber')}</span></div>`).join('')}
-      ${dayPlans.length + dayVisits.length + dayLeaves.length + dayEvents.length + dayHols.length ? '' : empty('calendar', 'Nothing on this day', day >= today ? 'Plan a visit below.' : '')}</div>
+      ${dayPlans.length + dayVisits.length + dayLeaves.length + dayEvents.length + dayHols.length + dayBdays.length ? '' : empty('calendar', 'Nothing on this day', day >= today ? 'Plan a visit below.' : '')}</div>
     <section class="card"><h3 class="card-title">Plan a visit</h3>
       <label class="field-l" for="plSchool">School</label><select id="plSchool">${schoolsOfMod(u.name).map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
       <div class="grid2"><div><label class="field-l" for="plDate">Date</label><input type="date" id="plDate" value="${day >= today ? day : today}" min="${today}"></div>
@@ -1334,6 +1488,7 @@ function cOverview(u: User): string {
       ${pending.length ? `<button class="btn block" onclick="go('leave')">Review leave</button>` : ''}</section>` : ''}
     <h2 class="section-title">Operations · component requests</h2>${opsKpiCards()}
     ${eventsCard(u, 'School events · next 2 weeks')}
+    ${canSeeProfiles(u) ? birthdayCard(u, 14) : ''}
     <h2 class="section-title">Needs attention</h2>
     <div class="card list">${attention.length ? attention.slice(0, 10).map(({ t, fb }) => `<button class="row-item tap" onclick="openTeacher('${esc(t.name)}')"><span class="avatar">${initials(t.name)}</span>
       <span class="row-main"><b>${esc(t.name)}</b><small>${esc(t.mod)} · ${esc(fb.judgement.action)} · ${fmtD(fb.date)}</small></span><span class="row-end">${ragPill(fb.rag)}${ic('chevR', 18)}</span></button>`).join('')
@@ -1342,7 +1497,8 @@ function cOverview(u: User): string {
 function cTeachers(u: User): string {
   const order: Record<RagOrNone, number> = { red: 0, amber: 1, green: 2, none: 3 };
   const ts = STORE.get('teachers').map((t) => ({ t, rag: teacherRag(t.name) })).sort((a, b) => order[a.rag.key] - order[b.rag.key]);
-  const tabs = segTabs('Teachers', CTS, 'setCts', [['teachers', 'Performance', 'chart'], ['plans', 'Lesson plans', 'book']]);
+  const tabs = segTabs('Teachers', CTS, 'setCts', [['teachers', 'Performance', 'chart'], ['plans', 'Lesson plans', 'book'], ...(canSeeProfiles(u) ? [['profiles', 'Profiles', 'users'] as [string, string, string]] : [])]);
+  if (CTS === 'profiles' && canSeeProfiles(u)) return pageHead('Teachers', 'Profiles of every teacher and coordinator, and upcoming birthdays.', `<button class="btn ghost sm" onclick="reportProfiles()">${ic('download', 16)}Profiles</button>`) + tabs + profilesAdmin();
   if (CTS === 'plans') return pageHead('Teachers', 'Weekly lesson plans and who has updated their progress.') + tabs + plansAdmin(u);
   return pageHead('Teachers', 'Sorted by risk — red first. Tap a teacher for their trend.',
     `<button class="btn ghost sm" onclick="reportAllTeachers()">${ic('download', 16)}Teachers</button><button class="btn ghost sm" onclick="reportVisits()">${ic('download', 16)}Visit log</button>`) +

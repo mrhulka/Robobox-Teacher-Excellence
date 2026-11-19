@@ -8,7 +8,7 @@ const STORE = (() => {
     return {
       schools: SEED.schools, teachers: SEED.teachers, moderators: SEED.moderators,
       attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
-      notices: [], holidays: [], events: [], lessons: SEED.lessons, planUpdates: [],
+      notices: [], holidays: [], events: [], lessons: SEED.lessons, planUpdates: [], profiles: [],
     };
   }
   function load(): Collections {
@@ -19,10 +19,15 @@ const STORE = (() => {
       if (raw) {
         const d = { ...seedDb(), ...JSON.parse(raw) } as Collections;
         if (!d.lessons.length) d.lessons = SEED.lessons; // devices saved before the schedule shipped
-        return d;
+        return withIds(d);
       }
     } catch (e) { /* ignore */ }
-    return seedDb();
+    return withIds(seedDb());
+  }
+  // Seeded lesson sessions ship without ids; give them stable ones so they can be replaced or removed.
+  function withIds(d: Collections): Collections {
+    d.lessons = d.lessons.map((p, i) => p.id ? p : { ...p, id: 'lesson_seed_' + i });
+    return d;
   }
 
   let db = load();
