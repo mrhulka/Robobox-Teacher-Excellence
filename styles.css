@@ -622,3 +622,5 @@ body:has(.login){background:radial-gradient(640px 520px at 88% -4%,rgba(242,190,
 .fence-off{margin:0;padding:20px;color:var(--muted);font-size:14px}
 .fence .leaflet-bar{border:1px solid var(--hairline);border-radius:12px;overflow:hidden;box-shadow:var(--sh-1)}
 .fence .leaflet-bar a{width:36px;height:36px;line-height:36px;color:var(--ink)}
+.fence-note{position:absolute;z-index:500;left:10px;right:10px;top:10px;margin:0 0 0 46px;display:flex;align-items:flex-start;gap:6px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.92);box-shadow:var(--sh-1);color:var(--ink-2);font-size:12.5px;line-height:1.35;pointer-events:none}
+.fence-note .i{flex:none;margin-top:1px}

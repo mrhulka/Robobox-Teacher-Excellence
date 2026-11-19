@@ -231,7 +231,13 @@ function drawFence(): void {
     if (LM) LM.map.remove(); // the old container left the page on re-render
     const map = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView(school, 17);
     map.createPane('you').style.zIndex = '650'; // your dot above the school pin, even standing right at it
-    L.tileLayer(OSM_TILES, { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+    // If no street image ever loads (offline, or a host that blocks outside images — like the claude.ai
+    // preview), say so instead of showing a blank map. The fence, pin and your dot still work.
+    let tiles = 0;
+    L.tileLayer(OSM_TILES, { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' })
+      .on('tileload', () => { tiles++; el!.querySelector('.fence-note')?.remove(); })
+      .on('tileerror', () => { if (!tiles && !el!.querySelector('.fence-note')) el!.insertAdjacentHTML('beforeend', `<p class="fence-note">${ic('info', 14)}Street map can't load here — check your connection. Your distance to the school is still measured.</p>`); })
+      .addTo(map);
     L.circle(school, { radius: CONFIG.geofenceMeters, color: '#F2BE14', weight: 2, fillColor: '#F2BE14', fillOpacity: 0.18, interactive: false, className: 'fence-circle' }).addTo(map);
     L.marker(school, { title: s.name, keyboard: false, icon: L.divIcon({ className: 'school-pin', html: ic('home', 16), iconSize: [32, 32], iconAnchor: [16, 32] }) }).addTo(map);
     LM = { el, map, me: null, acc: null, fitted: false };
