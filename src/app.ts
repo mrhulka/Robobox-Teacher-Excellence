@@ -1503,7 +1503,7 @@ function perfInner(name: string): string {
     const s = f.score; const delta = (s != null && prev != null) ? s - prev : null; if (s != null) prev = s;
     const dstr = delta == null ? '' : delta > 0.05 ? `<span class="delta up">+${delta.toFixed(1)}</span>` : delta < -0.05 ? `<span class="delta down">−${Math.abs(delta).toFixed(1)}</span>` : '<span class="delta">±0</span>';
     return `<div class="visit">
-      <div class="visit-top"><span class="row-main"><b>${fmtD(f.date)} · ${esc(schoolName(f.school))}</b><small>${esc(f.judgement.improvement)} · by ${esc(f.mod)}</small></span>
+      <div class="visit-top"><span class="row-main"><b>${fmtD(f.date)} · ${esc(schoolName(f.school))}</b><small>${esc(f.judgement.improvement)} · by ${esc(f.mod)}</small>${f.outAt ? `<small class="geo-ok">${ic('pin', 13)}At school ${f.inAt ? `${fmtT(f.inAt)} (${f.inDist} m)` : ''} → submitted ${fmtT(f.outAt)} (${f.outDist} m)</small>` : ''}</span>
         <span class="row-end"><span class="score">${s != null ? s.toFixed(1) : '—'}</span>${dstr}${ragPill(f.rag)}</span></div>
       <div class="bar"><span style="width:${s != null ? Math.round((s / 5) * 100) : 0}%;background:var(--${f.rag})"></span></div>
       ${f.actionPlan ? `<div class="plan">${ic('target', 16)}<div><b>Action plan</b><p>${esc(f.actionPlan)}</p>${f.nextVisit ? `<small>Next visit: ${fmtLong(f.nextVisit)}</small>` : ''}</div></div>` : ''}
@@ -1545,7 +1545,7 @@ function mVisit(u: User): string {
   const schools = schoolsOfMod(u.name);
   const todays = STORE.get('plans').filter((p) => p.mod === u.name && p.status === 'Planned' && p.date === todayStr());
   const evToday = eventsFor(u).filter((e) => eventOn(e, todayStr()));
-  return pageHead('Classroom visit', `Feedback unlocks only inside the school's ${CONFIG.geofenceMeters} m geofence.`) +
+  return pageHead('Classroom visit', `Verify you're at the school (within ${CONFIG.geofenceMeters} m) to open the form — it's checked again when you submit.`) +
     (evToday.length ? `<div class="notice info">${ic('flag', 18)}<span>Today at your schools: ${evToday.map((e) => `<b>${esc(e.title || e.type)}</b> at ${esc(schoolName(e.school))}`).join(', ')}</span></div>` : '') +
     (todays.length ? `<div class="notice brand">${ic('calendar', 18)}<span>Planned today: <b>${todays.map((p) => esc(schoolName(p.school))).join(', ')}</b></span></div>` : '') +
     `<section class="card">
@@ -1573,7 +1573,7 @@ async function unlockVisit(): Promise<void> {
     const g = await atSchool(school);
     if (!g) { flash('warn', 'Cancelled.'); return; }
     if (!g.ok) { flash('err', `You are ${Math.round(g.dist)} m away — move within ${CONFIG.geofenceMeters} m to open the form.`); return; }
-    VISIT = { school: school.id, teacher: null, ratings: {}, critical: {}, judgement: {}, step: 'pickTeacher' };
+    VISIT = { school: school.id, teacher: null, ratings: {}, critical: {}, judgement: {}, step: 'pickTeacher', inAt: new Date().toISOString(), inDist: Math.round(g.dist) };
     flash('ok', 'Location verified.'); render(); window.scrollTo(0, 0);
   } catch (e) { flash('err', (e as Error).message); }
 }
@@ -1625,13 +1625,24 @@ function cancelVisit(): void { VISIT = null; render(); }
 function pickIn(btn: HTMLElement): void { btn.parentElement!.querySelectorAll('button').forEach((b) => b.classList.remove('on')); btn.classList.add('on'); }
 function setCritical(btn: HTMLElement, id: string, value: string): void { VISIT!.critical[id] = value; pickIn(btn); updateRagLive(); }
 function setRate(btn: HTMLElement, id: string, v: number | 'na'): void { VISIT!.ratings[id] = v; pickIn(btn); updateRagLive(); }
-function submitVisit(): void {
+// The coordinator must still be inside the school's geofence when submitting — the same check as on arrival —
+// so a form opened at school can't be filled in and sent from somewhere else. Answers are kept if it fails.
+let SUBMITTING = false;
+async function submitVisit(): Promise<void> {
+  if (SUBMITTING) return;
   const u = SESSION.get()!; const v = VISIT!; const today = todayStr();
   const actionPlan = $('jPlan').value.trim(); const nextVisit = $('jNext').value;
   const planErr = actionPlan.length < 10 ? 'Write a short action plan — at least a sentence.' : '';
   const nextErr = !nextVisit ? 'Pick the next visit date.' : nextVisit <= today ? 'The next visit must be after today.' : '';
   setErr('jPlanErr', planErr); setErr('jNextErr', nextErr);
   if (planErr || nextErr) { $(planErr ? 'jPlan' : 'jNext').focus(); flash('err', 'Add the action plan and next visit date.'); return; }
+  const school = STORE.school(v.school)!;
+  SUBMITTING = true; flash('warn', `Confirming you're still at ${school.name}…`);
+  let g: { ok: boolean; dist: number } | null;
+  try { g = await atSchool(school); } catch (e) { SUBMITTING = false; flash('err', (e as Error).message + ' Your answers are kept.'); return; }
+  SUBMITTING = false;
+  if (!g) { flash('warn', 'Cancelled — your answers are kept.'); return; }
+  if (!g.ok) { flash('err', `You're ${Math.round(g.dist)} m from ${school.name}. Feedback can only be submitted at the school, within ${CONFIG.geofenceMeters} m — your answers are kept.`); return; }
   const ratings: Record<string, number> = {};
   Object.entries(v.ratings).forEach(([k, val]) => { if (typeof val === 'number') ratings[k] = val; });
   const safety = v.critical['N9'] === 'Yes';
@@ -1641,6 +1652,7 @@ function submitVisit(): void {
     ratings, critical: v.critical,
     judgement: { independence: $('jInd').value, improvement: $('jImp').value, action: $('jAct').value },
     rag: computeRag(v.ratings, v.critical), note: $('jNote').value, safety, score: null, actionPlan, nextVisit,
+    inAt: v.inAt, inDist: v.inDist, outAt: new Date().toISOString(), outDist: Math.round(g.dist),
   };
   fb.score = visitScore(fb);
   STORE.add('feedback', fb);
@@ -1984,9 +1996,10 @@ function reportCoords(): void {
   downloadXLSX(`robobox-coordinators-${todayStr()}.xlsx`, rows, 'Coordinators');
 }
 function reportVisits(): void { // every visit, dated — pivot in Excel for growth/degrowth over time
-  const rows: unknown[][] = [['Date', 'Coordinator', 'Teacher', 'School', 'Grade', 'Module', 'Students', 'Score', 'RAG', 'Improvement', 'Action', 'Action plan', 'Next visit']];
+  const rows: unknown[][] = [['Date', 'Coordinator', 'Teacher', 'School', 'Grade', 'Module', 'Students', 'Score', 'RAG', 'Improvement', 'Action', 'Action plan', 'Next visit', 'Arrived (verified)', 'Distance on arrival (m)', 'Submitted', 'Distance at submit (m)']];
   STORE.get('feedback').slice().sort((a, b) => a.date.localeCompare(b.date)).forEach((f) => {
-    rows.push([f.date, f.mod, f.teacher, schoolName(f.school), f.grade, f.module, f.students, f.score != null ? f.score.toFixed(2) : '', f.rag, f.judgement.improvement, f.judgement.action, f.actionPlan || '', f.nextVisit || '']);
+    rows.push([f.date, f.mod, f.teacher, schoolName(f.school), f.grade, f.module, f.students, f.score != null ? f.score.toFixed(2) : '', f.rag, f.judgement.improvement, f.judgement.action, f.actionPlan || '', f.nextVisit || '',
+      f.inAt ? fmtT(f.inAt) : '', f.inDist ?? '', f.outAt ? fmtT(f.outAt) : '', f.outDist ?? '']);
   });
   downloadXLSX(`robobox-visits-${todayStr()}.xlsx`, rows, 'Visits');
 }

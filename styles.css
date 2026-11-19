@@ -638,3 +638,4 @@ button.stat .stat-top>.i:last-child{margin-left:auto;color:var(--muted)}
 .pick input:checked+span{background:var(--ink);border-color:var(--ink);color:#fff}
 .pick input:focus-visible+span{box-shadow:var(--ring)}
 .coord .bar{margin-top:10px}
+.geo-ok{display:inline-flex;align-items:center;gap:4px;color:#14612F}

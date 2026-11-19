@@ -19,6 +19,7 @@ interface Feedback {
   judgement: { independence: string; improvement: string; action: string };
   rag: RagKey; note: string; safety: boolean; score: number | null;
   actionPlan?: string; nextVisit?: string; // added later; older records may not have them
+  inAt?: string; inDist?: number; outAt?: string; outDist?: number; // geofence check when the form opened, and again at submit
 }
 interface Leave { id?: string; teacher: string; mod?: string; type: string; from: string; to: string; reason: string; status: string; decidedBy?: string; decidedAt?: string; applicant?: 'mod'; }
 interface ReqLine { component: string; qty: number; }
@@ -89,4 +90,5 @@ interface Visit {
   critical: Record<string, string>;
   judgement: Record<string, string>;
   step: 'pickTeacher' | 'form';
+  inAt?: string; inDist?: number; // when and how far from the school the coordinator verified on arrival
 }
