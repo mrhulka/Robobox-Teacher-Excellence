@@ -2,6 +2,9 @@
 // Classic script: CONFIG is a global shared with the other scripts.
 const CONFIG: AppConfig = {
   geofenceMeters: 100,
+  // Google Maps JavaScript API key → a normal draggable/zoomable Google map with the fence drawn on it.
+  // Create in Google Cloud (Maps JavaScript API), restrict it to Robobox's domain. Empty = keyless fallback.
+  googleMapsKey: '',
   expectedStart: '08:00', // school reporting time; lateness is measured from here. Per-school if timings vary.
   opsSlaDays: 3, // ponytail: target days from request to fulfilment for the Operations KPI — confirm with Robobox.
   workDays: [1, 2, 3, 4, 5], // Mon–Fri (0 = Sunday). Days outside this are never counted as absent.

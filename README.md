@@ -48,6 +48,15 @@ and the same motion curve and keyframes (`rb-rise`, `rb-pop`, `rb-shake`…). It
 
 Leadership names, who is "top" and who sees profiles (`profiles: true`, Parth) live in `CONFIG.leaders`. Operations and HR are one shared sign-in each.
 
+## Signing in
+One screen: **Name** and **Password**. Typing a name lists everyone who matches (login name or profile full
+name, any word) with their role and school — e.g. *Mayuri · Teacher · Harmony*; arrow keys + Enter or a tap
+picks one. People who share a name (e.g. Manisha the teacher and Manisha the coordinator) must pick from the
+list. The **default password is the person's name** (any capitalisation); anyone can change it under *My
+profile → Password* (min 6 characters, not their name). Operations and HR sign in as "Operations" / "HR".
+Changed passwords are stored as salted SHA-256 hashes **on the device** — a prototype convenience; real
+sign-in moves to the backend with the data (see the end of this file).
+
 ## My profile & birthdays
 Every user can open **My profile** by tapping their name in the top bar. For **teachers and coordinators it is
 compulsory**: until a **photo** (a selfie or one from the phone's library), full name, education, birthday and location are saved, the app shows only the profile form.
@@ -107,11 +116,15 @@ Check-in/out and coordinator visits read the phone's GPS (browser Geolocation) a
 School locations*) or by Parth/Manish (*Coordinators → School locations*): paste the school's **Google Maps
 link** (or `lat, lng`) — `parseLatLng()` reads the place pin from it — or stand at the gate and tap *Use my
 current location*. **Check-in map:** on the teacher's Home (and the coordinator's Visit screen) the selected school shows on a
-Google map with its 100 m fence drawn as a ring and the user as a blue dot (with GPS accuracy halo), plus
-"Inside the fence · 40 m" / "Outside · 300 m away". The keyless Google embed can't draw shapes, so the ring and
-dot are an overlay on a fixed zoom-17 map centred on the pin (Web Mercator scale → exact pixels); the map is
-not draggable so they stay aligned. For a live, pannable map, switch `fenceHtml()` to the Maps JavaScript API
-(needs a Google API key). **Teachers can't set a pin**: check-in at a school without one is refused.
+Google map with its 100 m fence and the user as a blue dot (with GPS accuracy halo), plus "Inside the fence ·
+40 m" / "Outside · 300 m away".
+
+- **With `CONFIG.googleMapsKey` set** (in `src/config.ts`): the real Google map via the Maps JavaScript API —
+  drag, pinch-zoom, fullscreen — with the fence drawn as a Google Maps Circle and the user as a marker. Create
+  the key in Google Cloud (enable *Maps JavaScript API*) and restrict it to Robobox's domain.
+- **Without a key**: the keyless Google embed with the fence and dot overlaid at a fixed zoom-17 scale (the
+  embed can't draw shapes). *Tap to explore* makes it a normal draggable/zoomable map (the overlay hides,
+  since it can't follow); *Re-centre* brings the fence back. **Teachers can't set a pin**: check-in at a school without one is refused.
 The sheet's `maps.app.goo.gl` short links were resolved once to coordinates and are built into `seed.ts`
 (all 29 schools; HARMONY, G D Somani, Ideal and RIS from Robobox's corrected links). When a school's link
 changes in `seed.ts`, devices pick up the new pin on next load.

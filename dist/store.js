@@ -8,7 +8,7 @@ const STORE = (() => {
         return {
             schools: SEED.schools, teachers: SEED.teachers, moderators: SEED.moderators,
             attendance: [], feedback: [], leaves: [], requests: [], tasks: [], materials: [], plans: [],
-            notices: [], holidays: [], events: [], lessons: SEED.lessons, planUpdates: [], profiles: [],
+            notices: [], holidays: [], events: [], lessons: SEED.lessons, planUpdates: [], profiles: [], passwords: [],
         };
     }
     function load() {

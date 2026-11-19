@@ -240,63 +240,144 @@ async function atSchool(school) {
     const dist = haversine(pos, { lat: school.lat, lng: school.lng });
     return { ok: dist <= CONFIG.geofenceMeters, dist };
 }
-/* ---------- geofence map: Google map + the fence circle + where you are ---------- */
-// The keyless Google embed can't draw shapes, so the fence and your dot sit on top of it. At a fixed
-// zoom the embed is centred on the school pin and its scale is known (Web Mercator), so 100 m is an
-// exact number of pixels. The map isn't draggable (pointer-events off) so the overlay stays aligned.
-// ponytail: keyless embed + overlay; switch to the Maps JavaScript API (needs a key) for a live, pannable map.
+/* ---------- geofence map: the real Google map, the fence circle and where you are ---------- */
+// With CONFIG.googleMapsKey: the Maps JavaScript API — a normal Google map (drag, pinch-zoom), with the fence
+// drawn as a Circle and you as a blue dot. Without a key (the keyless embed can't draw shapes): the embed with
+// the fence and dot overlaid at a fixed zoom-17 scale; tap the map to explore it, Re-centre brings the fence back.
 const FENCE_ZOOM = 17;
 const metresPerPx = (lat) => 156543.03392 * Math.cos(lat * Math.PI / 180) / 2 ** FENCE_ZOOM;
 let HERE = null;
 let HERE_AT = 0;
 let FENCE_SEL = '';
-function fenceHtml(s) {
-    if (!s)
-        return '';
-    if (s.lat == null)
-        return `<div class="fence-empty">${ic('pin', 18)}<span>${esc(s.name)}'s location isn't set yet — your coordinator sets it.</span></div>`;
-    const mpp = metresPerPx(s.lat);
-    const r = CONFIG.geofenceMeters / mpp;
-    let me = '', status = `<span class="fence-status">${ic('pin', 15)}Finding you…</span>`;
-    if (HERE) {
-        const d = haversine(HERE, s);
-        const inside = d <= CONFIG.geofenceMeters;
-        const dx = ((HERE.lng - s.lng) * 111320 * Math.cos(s.lat * Math.PI / 180)) / mpp, dy = (-(HERE.lat - s.lat) * 111320) / mpp;
-        const pos = (v) => `clamp(10px, calc(50% + ${v.toFixed(1)}px), calc(100% - 10px))`; // off the map → pinned to its edge
-        me = `<span class="fence-acc" style="left:${pos(dx)};top:${pos(dy)};width:${Math.min(2 * HERE.acc / mpp, 400).toFixed(0)}px;height:${Math.min(2 * HERE.acc / mpp, 400).toFixed(0)}px"></span><span class="fence-me" style="left:${pos(dx)};top:${pos(dy)}" aria-hidden="true"></span>`;
-        status = `<span class="fence-status ${inside ? 'in' : 'out'}">${ic(inside ? 'check' : 'alert', 15)}${inside ? `Inside the fence · ${Math.round(d)} m from school` : `Outside · ${d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'} away — get within ${CONFIG.geofenceMeters} m`}</span>`;
-    }
-    return `<div class="fence" role="img" aria-label="Map of ${esc(s.name)} with its ${CONFIG.geofenceMeters} m check-in area${HERE ? '' : ''}">
-      <iframe tabindex="-1" loading="lazy" title="Map of ${esc(s.name)}" src="https://maps.google.com/maps?q=${s.lat},${s.lng}&z=${FENCE_ZOOM}&output=embed"></iframe>
-      <span class="fence-ring" style="width:${(2 * r).toFixed(0)}px;height:${(2 * r).toFixed(0)}px"></span>${me}
-    </div>
-    <div class="fence-foot">${status}<button class="btn ghost sm" onclick="locateMe(true)">${ic('pin', 15)}Refresh</button></div>`;
+const fenceSchool = () => { const sel = document.getElementById(FENCE_SEL); return sel ? STORE.school(sel.value) : undefined; };
+function fenceStatus(s) {
+    if (!HERE)
+        return `<span class="fence-status">${ic('pin', 15)}Finding you…</span>`;
+    const d = haversine(HERE, s);
+    const inside = d <= CONFIG.geofenceMeters;
+    return `<span class="fence-status ${inside ? 'in' : 'out'}">${ic(inside ? 'check' : 'alert', 15)}${inside ? `Inside the fence · ${Math.round(d)} m from school` : `Outside · ${d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'} away — get within ${CONFIG.geofenceMeters} m`}</span>`;
 }
-// Redraws just the map box (no full render, so the page and the select keep their state).
+function overlayMe(s) {
+    if (!HERE)
+        return '';
+    const mpp = metresPerPx(s.lat);
+    const dx = ((HERE.lng - s.lng) * 111320 * Math.cos(s.lat * Math.PI / 180)) / mpp, dy = (-(HERE.lat - s.lat) * 111320) / mpp;
+    const pos = (v) => `clamp(10px, calc(50% + ${v.toFixed(1)}px), calc(100% - 10px))`;
+    const a = Math.min(2 * HERE.acc / mpp, 400).toFixed(0);
+    return `<span class="fence-acc" style="left:${pos(dx)};top:${pos(dy)};width:${a}px;height:${a}px"></span><span class="fence-me" style="left:${pos(dx)};top:${pos(dy)}"></span>`;
+}
+function fenceShell(s) {
+    const key = !!CONFIG.googleMapsKey;
+    return `<div class="fence${key ? ' live' : ''}" id="fenceMap" data-s="${s.id}" aria-label="Map of ${esc(s.name)} with its ${CONFIG.geofenceMeters} m check-in area">
+      ${key ? '' : `<iframe loading="lazy" title="Map of ${esc(s.name)}" src="https://maps.google.com/maps?q=${s.lat},${s.lng}&z=${FENCE_ZOOM}&output=embed"></iframe>
+        <span class="fence-ring" style="width:${(2 * CONFIG.geofenceMeters / metresPerPx(s.lat)).toFixed(0)}px;height:${(2 * CONFIG.geofenceMeters / metresPerPx(s.lat)).toFixed(0)}px"></span><span id="fenceMe">${overlayMe(s)}</span>
+        <button class="fence-shield" onclick="fenceExplore()"><span>${ic('search', 14)}Tap to explore the map</span></button>`}
+    </div>
+    <div class="fence-foot"><span id="fenceStat">${fenceStatus(s)}</span>
+      ${key ? '' : `<button class="btn ghost sm" id="fenceRecentre" hidden onclick="fenceRebuild()">${ic('target', 15)}Re-centre</button>`}
+      <button class="btn ghost sm" onclick="locateMe(true)">${ic('pin', 15)}Refresh</button></div>`;
+}
+function fenceExplore() { var _a, _b; (_a = document.getElementById('fenceMap')) === null || _a === void 0 ? void 0 : _a.classList.add('exploring'); (_b = document.getElementById('fenceRecentre')) === null || _b === void 0 ? void 0 : _b.removeAttribute('hidden'); }
+function fenceRebuild() { const box = document.getElementById('fenceBox'); const s = fenceSchool(); if (box && s)
+    box.innerHTML = fenceShell(s); }
+// Updates the map in place: rebuilds only when the school changes, otherwise moves your dot.
 function drawFence() {
     const box = document.getElementById('fenceBox');
-    const sel = document.getElementById(FENCE_SEL);
-    if (box && sel)
-        box.innerHTML = fenceHtml(STORE.school(sel.value));
+    const s = fenceSchool();
+    if (!box || !s)
+        return;
+    if (s.lat == null) {
+        box.innerHTML = `<div class="fence-empty">${ic('pin', 18)}<span>${esc(s.name)}'s location isn't set yet — your coordinator sets it.</span></div>`;
+        return;
+    }
+    const map = document.getElementById('fenceMap');
+    if (!map || map.dataset.s !== s.id) {
+        box.innerHTML = fenceShell(s);
+        GM = null;
+    }
+    document.getElementById('fenceStat').innerHTML = fenceStatus(s);
+    if (CONFIG.googleMapsKey)
+        gmapDraw(s);
+    else {
+        const me = document.getElementById('fenceMe');
+        if (me)
+            me.innerHTML = overlayMe(s);
+    }
 }
-const fenceBox = (selectId, s) => { FENCE_SEL = selectId; if (Date.now() - HERE_AT > 60000)
-    setTimeout(() => locateMe(false), 0); return `<div id="fenceBox">${fenceHtml(s)}</div>`; };
+const fenceBox = (selectId) => { FENCE_SEL = selectId; setTimeout(() => { drawFence(); if (Date.now() - HERE_AT > 60000)
+    locateMe(false); }, 0); return '<div id="fenceBox"></div>'; };
 async function locateMe(manual) {
-    const sel = document.getElementById(FENCE_SEL);
-    if (!sel)
+    if (!fenceSchool())
         return;
     HERE_AT = Date.now();
     try {
-        HERE = await getPos(STORE.school(sel.value));
+        HERE = await getPos(fenceSchool());
         drawFence();
     }
     catch (e) {
         if (manual)
             flash('err', e.message);
-        const st = document.querySelector('#fenceBox .fence-status');
+        const st = document.getElementById('fenceStat');
         if (st)
             st.textContent = e.message;
     }
+}
+let GMAPS = null;
+function loadGmaps() {
+    if (!GMAPS)
+        GMAPS = new Promise((res, rej) => {
+            window.__gmapsReady = () => res();
+            const sc = document.createElement('script');
+            sc.async = true;
+            sc.onerror = () => { GMAPS = null; rej(new Error('Google Maps could not load.')); };
+            sc.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(CONFIG.googleMapsKey)}&loading=async&callback=__gmapsReady`;
+            document.head.appendChild(sc);
+        });
+    return GMAPS;
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let GM = null;
+async function gmapDraw(s) {
+    try {
+        await loadGmaps();
+    }
+    catch (e) {
+        const st = document.getElementById('fenceStat');
+        if (st)
+            st.textContent = e.message;
+        return;
+    }
+    const el = document.getElementById('fenceMap');
+    if (!el || el.dataset.s !== s.id)
+        return;
+    const g = google.maps;
+    const centre = { lat: s.lat, lng: s.lng };
+    if (!GM || GM.el !== el) {
+        const map = new g.Map(el, { center: centre, zoom: FENCE_ZOOM, mapTypeControl: false, streetViewControl: false, clickableIcons: false });
+        new g.Circle({ map, center: centre, radius: CONFIG.geofenceMeters, strokeColor: '#F2BE14', strokeWeight: 2, fillColor: '#F2BE14', fillOpacity: 0.18, clickable: false });
+        new g.Marker({ map, position: centre, title: s.name });
+        GM = { el, map, me: null, acc: null, fitted: false };
+    }
+    if (!HERE)
+        return;
+    const me = { lat: HERE.lat, lng: HERE.lng };
+    if (!GM.me) {
+        GM.acc = new g.Circle({ map: GM.map, center: me, radius: HERE.acc, strokeColor: '#1A73E8', strokeOpacity: 0.3, strokeWeight: 1, fillColor: '#1A73E8', fillOpacity: 0.12, clickable: false });
+        GM.me = new g.Marker({ map: GM.map, position: me, title: 'You are here', zIndex: 9, icon: { path: g.SymbolPath.CIRCLE, scale: 8, fillColor: '#1A73E8', fillOpacity: 1, strokeColor: '#FFFFFF', strokeWeight: 3 } });
+    }
+    else {
+        GM.me.setPosition(me);
+        GM.acc.setCenter(me);
+        GM.acc.setRadius(HERE.acc);
+    }
+    // Outside the fence (but nearby): fit both so the way in is visible. Once — after that the user drives.
+    if (!GM.fitted && haversine(HERE, s) > CONFIG.geofenceMeters && haversine(HERE, s) < 5000) {
+        const b = new g.LatLngBounds();
+        b.extend(centre);
+        b.extend(me);
+        GM.map.fitBounds(b, 48);
+    }
+    GM.fitted = true;
 }
 /* ---------- RAG / scoring ---------- */
 function visitScore(fb) {
@@ -492,69 +573,174 @@ function render() {
 }
 function logout() { SESSION.clear(); Object.keys(TAB).forEach((k) => delete TAB[k]); SEL = null; PROF = false; PF_SELFIE = ''; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t)
     t.innerHTML = ''; render(); }
-/* ================= LOGIN ================= */
-let LOGIN = { role: null };
-const roleCard = (r, icon, title, desc) => `<button class="role-card" onclick="pickRole('${r}')"><span class="role-ic">${ic(icon, 22)}</span><span class="role-txt"><b>${title}</b><small>${desc}</small></span>${ic('chevR', 20)}</button>`;
+function people() {
+    return [
+        ...STORE.get('teachers').map((t) => ({ role: 'teacher', name: t.name, label: 'Teacher', detail: schoolsOfTeacher(t).map((s) => schoolLabel(s.name)).join(', ') })),
+        ...STORE.get('moderators').map((m) => ({ role: 'mod', name: m, label: 'Coordinator', detail: plural(schoolsOfMod(m).length, 'school') })),
+        ...CONFIG.leaders.map((l) => ({ role: 'ceo', name: l.name, label: l.title, detail: 'Leadership' })),
+        { role: 'ops', name: 'Operations', label: 'Operations team', detail: 'Component requests' },
+        { role: 'hr', name: 'HR', label: 'Human resources', detail: 'Updates and handbook' },
+    ];
+}
+// 'HARMONY' → 'Harmony', but abbreviations like NES, NHPS, RIS stay as they are.
+const schoolLabel = (n) => n.split(' ').map((w) => /^[A-Z.]{1,4}$/.test(w) ? w : titleCase(w)).join(' ');
+const shownName = (p) => { var _a; return ((_a = profileOf(p.role, p.name)) === null || _a === void 0 ? void 0 : _a.fullName) || titleCase(p.name); };
+// Any word of the login name or the profile's full name starting with what was typed; name-starts first.
+function matchPeople(q) {
+    const s = q.trim().toLowerCase();
+    if (!s)
+        return [];
+    const words = (p) => { var _a; return `${p.name} ${((_a = profileOf(p.role, p.name)) === null || _a === void 0 ? void 0 : _a.fullName) || ''}`.toLowerCase().split(/[\s.]+/); };
+    return people().filter((p) => words(p).some((w) => w.startsWith(s)) || p.name.toLowerCase().startsWith(s))
+        .sort((a, b) => Number(!a.name.toLowerCase().startsWith(s)) - Number(!b.name.toLowerCase().startsWith(s)) || a.name.localeCompare(b.name));
+}
+let LG = { list: [], active: -1, pick: null };
 function viewLogin() {
-    if (!LOGIN.role) {
-        return `<div class="login">
-      <img class="logo-full" src="assets/logo.webp" width="260" height="123" alt="The Robobox — Teacher Excellence">
-      <p class="login-sub">One Robobox classroom, delivered consistently.</p>
-      <div class="role-list">
-        ${roleCard('teacher', 'cap', 'Teacher', 'Check in, lesson plans, leave, requests')}
-        ${roleCard('mod', 'pin', 'Coordinator', 'Visits, action plans, teacher progress')}
-        ${roleCard('ceo', 'shield', 'Leadership', 'Parth · Manish · Outsight')}
-        ${roleCard('ops', 'package', 'Operations', 'Component requests and fulfilment')}
-        ${roleCard('hr', 'megaphone', 'HR', 'Company updates, handbook, holidays')}
-      </div>
-      <label class="switch-row"><input type="checkbox" ${DEMO.on ? 'checked' : ''} onchange="toggleDemo(this)">
-        <span><b>Demo mode</b><small>Simulates location so you can test without GPS. Turn off on a real device.</small></span></label>
-    </div>`;
-    }
-    let title = '', sub = '', options = '';
-    if (LOGIN.role === 'teacher') {
-        title = 'Teacher sign in';
-        sub = 'Select your name. You check in from school.';
-        options = STORE.get('teachers').slice().sort((a, b) => a.name.localeCompare(b.name))
-            .map((t) => `<option value="${esc(t.name)}">${esc(t.name)} — ${esc(schoolsOfTeacher(t).map((s) => s.name).join(', '))}</option>`).join('');
-    }
-    else if (LOGIN.role === 'mod') {
-        title = 'Coordinator sign in';
-        sub = 'Select your name.';
-        options = STORE.get('moderators').map((m) => `<option>${esc(m)}</option>`).join('');
-    }
-    else {
-        title = 'Leadership sign in';
-        sub = 'Parth, Manish or the Outsight team.';
-        options = CONFIG.leaders.map((l) => `<option value="${esc(l.name)}">${esc(l.name)} — ${esc(l.title)}</option>`).join('');
-    }
+    LG = { list: [], active: -1, pick: null };
     return `<div class="login">
-    ${backLink('Back', 'backToRoles()')}
-    <h1 class="login-title">${title}</h1><p class="login-sub left">${sub}</p>
-    <div class="card"><label class="field-l" for="who">Your name</label><select id="who">${options}</select>
-      <button class="btn block" onclick="doLogin('${LOGIN.role}')">Continue</button></div>
+    <img class="logo-full" src="assets/logo.webp" width="260" height="123" alt="The Robobox — Teacher Excellence">
+    <p class="login-sub">One Robobox classroom, delivered consistently.</p>
+    <form class="card login-form" onsubmit="lgSubmit(event)" autocomplete="on">
+      <label class="field-l" for="lgName">Name</label>
+      <div class="combo"><input id="lgName" name="username" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="lgList" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="Start typing your name" oninput="lgInput()" onkeydown="lgKey(event)" onblur="setTimeout(lgClose, 120)">
+        <ul id="lgList" class="combo-list" role="listbox" aria-label="Matching people" hidden></ul></div>
+      <label class="field-l" for="lgPw">Password</label>
+      <input id="lgPw" name="password" type="password" autocomplete="current-password" placeholder="Your password">
+      <p class="err" id="lgErr" role="alert"></p>
+      <button class="btn block lg" type="submit">${ic('login', 18)}Sign in</button>
+      <p class="hint center">First time? Your password is your name. Change it in your profile.</p>
+    </form>
+    <label class="switch-row"><input type="checkbox" ${DEMO.on ? 'checked' : ''} onchange="toggleDemo(this)">
+      <span><b>Demo mode</b><small>Simulates location so you can test without GPS. Turn off on a real device.</small></span></label>
   </div>`;
 }
-function pickRole(r) {
-    if (r === 'ops' || r === 'hr') {
-        SESSION.set({ role: r, name: r === 'ops' ? 'Operations' : 'HR' });
-        LOGIN = { role: null };
-        render();
+function lgDraw() {
+    var _a;
+    const ul = document.getElementById('lgList');
+    const inp = $('lgName');
+    ul.innerHTML = LG.list.map((p, i) => {
+        var _a;
+        return `<li id="lgo${i}" role="option" aria-selected="${i === LG.active}" data-role="${p.role}" data-name="${esc(p.name)}" onmousedown="event.preventDefault()" onclick="lgPick(${i})">
+    <span class="avatar sm" aria-hidden="true">${((_a = profileOf(p.role, p.name)) === null || _a === void 0 ? void 0 : _a.selfie) ? `<img src="${profileOf(p.role, p.name).selfie}" alt="">` : initials(shownName(p))}</span>
+    <span class="combo-txt"><b>${esc(shownName(p))}</b><small>${esc(p.label)} · ${esc(p.detail)}</small></span></li>`;
+    }).join('');
+    ul.hidden = !LG.list.length;
+    inp.setAttribute('aria-expanded', String(!!LG.list.length));
+    if (LG.active >= 0) {
+        inp.setAttribute('aria-activedescendant', 'lgo' + LG.active);
+        (_a = document.getElementById('lgo' + LG.active)) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ block: 'nearest' });
+    }
+    else
+        inp.removeAttribute('aria-activedescendant');
+}
+function lgInput() { LG.pick = null; LG.list = matchPeople($('lgName').value); LG.active = -1; setErr('lgErr', ''); lgDraw(); }
+function lgClose() { LG.list = []; LG.active = -1; if (document.getElementById('lgList'))
+    lgDraw(); }
+function lgPick(i) { const p = LG.list[i]; LG.pick = p; $('lgName').value = shownName(p); lgClose(); $('lgPw').focus(); }
+function lgKey(e) {
+    if (!LG.list.length)
         return;
-    } // one shared login each
-    LOGIN = { role: r };
-    render();
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        LG.active = (LG.active + (e.key === 'ArrowDown' ? 1 : -1) + LG.list.length) % LG.list.length;
+        lgDraw();
+    }
+    else if (e.key === 'Enter' && LG.active >= 0) {
+        e.preventDefault();
+        lgPick(LG.active);
+    }
+    else if (e.key === 'Escape')
+        lgClose();
 }
-function backToRoles() { LOGIN = { role: null }; render(); }
-function doLogin(role) {
-    const name = $('who').value;
-    const u = { role, name };
-    if (role === 'teacher')
-        u.mod = STORE.teacher(name).mod;
+// ponytail: passwords live on this device (salted SHA-256) — fine for the prototype, but real sign-in must
+// move to the backend with the data (see README); anyone with the device's storage can reset them.
+const pwKey = (role, name) => `${role}:${name.toLowerCase()}`;
+async function pwHash(key, pw) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`robobox|${key}|${pw}`));
+    return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function pwOk(p, pw) {
+    const rec = STORE.get('passwords').find((x) => x.key === pwKey(p.role, p.name));
+    if (!rec)
+        return pw.trim().toLowerCase() === p.name.toLowerCase(); // default: their name, any case
+    return rec.hash === await pwHash(rec.key, pw);
+}
+async function lgSubmit(e) {
+    e.preventDefault();
+    const typed = $('lgName').value.trim().toLowerCase();
+    const pw = $('lgPw').value;
+    let p = LG.pick;
+    if (!p) { // typed without picking: accept an exact, unambiguous name
+        const exact = people().filter((x) => x.name.toLowerCase() === typed || shownName(x).toLowerCase() === typed);
+        if (exact.length > 1) {
+            LG.list = matchPeople($('lgName').value);
+            LG.active = -1;
+            lgDraw();
+            setErr('lgErr', 'More than one person has that name — pick yours from the list.');
+            $('lgName').focus();
+            return;
+        }
+        p = exact[0] || null;
+    }
+    if (!p) {
+        setErr('lgErr', typed ? 'No one by that name — pick your name from the suggestions.' : 'Enter your name.');
+        $('lgName').focus();
+        return;
+    }
+    if (!(await pwOk(p, pw))) {
+        setErr('lgErr', 'Wrong password. First time? It’s your name.');
+        $('lgPw').select();
+        return;
+    }
+    const u = { role: p.role, name: p.name };
+    if (p.role === 'teacher')
+        u.mod = STORE.teacher(p.name).mod;
     SESSION.set(u);
-    LOGIN = { role: null };
     render();
+    entered();
 }
+// Profile → change password.
+async function changePassword() {
+    const u = SESSION.get();
+    const cur = $('pwCur').value, nw = $('pwNew').value, again = $('pwNew2').value;
+    setErr('pwCurErr', '');
+    setErr('pwNewErr', '');
+    setErr('pwNew2Err', '');
+    if (!(await pwOk(u, cur))) {
+        setErr('pwCurErr', 'That isn’t your current password.');
+        $('pwCur').focus();
+        return;
+    }
+    if (nw.length < 6) {
+        setErr('pwNewErr', 'Use at least 6 characters.');
+        $('pwNew').focus();
+        return;
+    }
+    if (nw.toLowerCase() === u.name.toLowerCase()) {
+        setErr('pwNewErr', 'Choose something other than your name.');
+        $('pwNew').focus();
+        return;
+    }
+    if (nw !== again) {
+        setErr('pwNew2Err', 'The two passwords don’t match.');
+        $('pwNew2').focus();
+        return;
+    }
+    const key = pwKey(u.role, u.name);
+    const hash = await pwHash(key, nw);
+    const rec = STORE.get('passwords').find((x) => x.key === key);
+    if (rec)
+        STORE.update('passwords', rec.id, { hash });
+    else
+        STORE.add('passwords', { key, hash });
+    ['pwCur', 'pwNew', 'pwNew2'].forEach((id) => { $(id).value = ''; });
+    flash('ok', 'Password changed. Use it next time you sign in.');
+}
+const passwordCard = () => `<section class="card"><h3 class="card-title">Password</h3>
+    <label class="field-l" for="pwCur">Current password</label><input id="pwCur" type="password" autocomplete="current-password"><p class="err" id="pwCurErr" role="alert"></p>
+    <label class="field-l" for="pwNew">New password</label><input id="pwNew" type="password" autocomplete="new-password" placeholder="At least 6 characters"><p class="err" id="pwNewErr" role="alert"></p>
+    <label class="field-l" for="pwNew2">Repeat new password</label><input id="pwNew2" type="password" autocomplete="new-password"><p class="err" id="pwNew2Err" role="alert"></p>
+    <button class="btn ghost block" onclick="changePassword()">${ic('check', 18)}Change password</button></section>`;
 /* ================= TEACHER ================= */
 async function punch(kind) {
     const u = SESSION.get();
@@ -612,7 +798,7 @@ function tHome(u) {
       </div></div>
       <label class="field-l" for="punchSchool">School</label>
       <select id="punchSchool" onchange="drawFence();locateMe(false)">${schools.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
-      ${fenceBox('punchSchool', schools[0])}
+      ${fenceBox('punchSchool')}
       ${open ? `<button class="btn dark block" onclick="punch('out')">${ic('logout', 18)}Check out</button>`
             : `<button class="btn block" onclick="punch('in')">${ic('login', 18)}Check in</button>`}
       ${schools.length > 1 ? '<p class="hint">You can check in at one school and check out at another.</p>' : ''}
@@ -1383,6 +1569,8 @@ async function pickSelfie(input) {
     }
 }
 function profileView(u, gate) {
+    if (!mustProfile(u))
+        return backLink('Back', 'closeProfile()') + pageHead('My profile', esc(u.name)) + passwordCard();
     const p = profileOf(u.role, u.name);
     const h = (u.role === 'teacher' && SEED.profileHints[u.name]) || {};
     if (!PF_SELFIE)
@@ -1403,7 +1591,7 @@ function profileView(u, gate) {
       ${field('pfLoc', 'Location', (p === null || p === void 0 ? void 0 : p.location) || h.location || '', 'autocomplete="address-level2" placeholder="Area, city — e.g. Dombivli, Thane"')}
       <button class="btn block" onclick="saveProfile()">${ic('check', 18)}${gate ? 'Save and continue' : 'Save profile'}</button>
       ${p ? `<p class="hint">Last updated ${fmtD(p.updatedAt.slice(0, 10))}.</p>` : ''}
-    </section>`;
+    </section>${gate ? '' : passwordCard()}`;
 }
 function saveProfile() {
     const u = SESSION.get();
@@ -1804,7 +1992,7 @@ function mVisit(u) {
         `<section class="card">
       <label class="field-l" for="vSchool">School</label>
       <select id="vSchool" onchange="drawFence();locateMe(false)">${schools.map((s) => `<option value="${s.id}"${todays.some((p) => p.school === s.id) ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
-      ${fenceBox('vSchool', schools.find((s) => todays.some((p) => p.school === s.id)) || schools[0])}
+      ${fenceBox('vSchool')}
       <button class="btn block" onclick="unlockVisit()">${ic('pin', 18)}Verify I'm at this school</button>
     </section>
     <h2 class="section-title">School locations · ${schools.filter((s) => s.lat != null).length}/${schools.length} set</h2>

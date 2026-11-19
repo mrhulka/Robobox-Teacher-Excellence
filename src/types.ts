@@ -40,6 +40,8 @@ interface LessonPlan { id?: string; week: string; grade: string; topic: string; 
 interface PlanUpdate { id?: string; teacher: string; week: string; grade: string; status: 'Done' | 'Partly done' | 'Not done' | 'Not my class'; reason: string; at: string; late: boolean; }
 // My profile — compulsory for teachers and coordinators (keyed by role + login name).
 interface Profile { id?: string; role: Role; name: string; fullName: string; education: string; birthday: string; location: string; updatedAt: string; selfie?: string; } // selfie = 320 px JPEG data URL
+// Changed passwords only (default = the person's name). key = role:name, hash = salted SHA-256.
+interface Password { id?: string; key: string; hash: string; }
 interface VisitPlan { id?: string; mod: string; school: string; date: string; note?: string; teacher?: string; status: 'Planned' | 'Done'; }
 
 // Every collection the store holds. Keys double as STORE.get() arguments.
@@ -48,7 +50,7 @@ interface Collections {
   attendance: Attendance[]; feedback: Feedback[]; leaves: Leave[];
   requests: Requisition[]; tasks: Task[]; materials: Material[]; plans: VisitPlan[];
   notices: Notice[]; holidays: Holiday[]; events: SchoolEvent[];
-  lessons: LessonPlan[]; planUpdates: PlanUpdate[]; profiles: Profile[];
+  lessons: LessonPlan[]; planUpdates: PlanUpdate[]; profiles: Profile[]; passwords: Password[];
 }
 
 interface Kit { id: string; name: string; items: [string, number | string][]; } // [component, standard kit qty]
@@ -56,6 +58,7 @@ interface Leader { name: string; title: string; top: boolean; profiles?: boolean
 
 interface AppConfig {
   geofenceMeters: number;
+  googleMapsKey: string;
   expectedStart: string;
   opsSlaDays: number;
   workDays: number[];
