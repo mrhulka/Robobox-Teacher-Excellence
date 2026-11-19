@@ -174,8 +174,8 @@ function haversine(a: LatLng, b: LatLng): number { // metres
   const s = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
-function getPos(): Promise<{ lat: number; lng: number; acc: number }> {
-  if (DEMO.on) return Promise.resolve({ ...DEMO_POS });
+function getPos(near?: School): Promise<{ lat: number; lng: number; acc: number }> {
+  if (DEMO.on) return Promise.resolve(near && near.lat != null ? { lat: near.lat + 25 / 111320, lng: near.lng!, acc: 8 } : { ...DEMO_POS });
   return new Promise((res, rej) => {
     if (!navigator.geolocation) return rej(new Error('Geolocation is not supported on this device.'));
     navigator.geolocation.getCurrentPosition(
@@ -188,13 +188,52 @@ function getPos(): Promise<{ lat: number; lng: number; acc: number }> {
 // (on-site, one-time). Returns {ok,dist} or null if aborted.
 async function atSchool(school: School): Promise<{ ok: boolean; dist: number } | null> {
   if (school.lat == null && SESSION.get()?.role === 'teacher' && !DEMO.on) throw new Error(`${school.name}'s location isn't set yet — ask your coordinator to set it from Google Maps.`);
-  const pos = await getPos();
+  const pos = await getPos(school); HERE = pos; drawFence();
   if (school.lat == null) {
     if (!DEMO.on && !confirm(`${school.name} has no geofence yet. Set it to your current location now?`)) return null;
     STORE.setSchoolLoc(school.id, pos.lat, pos.lng);
   }
   const dist = haversine(pos, { lat: school.lat as number, lng: school.lng as number });
   return { ok: dist <= CONFIG.geofenceMeters, dist };
+}
+
+/* ---------- geofence map: Google map + the fence circle + where you are ---------- */
+// The keyless Google embed can't draw shapes, so the fence and your dot sit on top of it. At a fixed
+// zoom the embed is centred on the school pin and its scale is known (Web Mercator), so 100 m is an
+// exact number of pixels. The map isn't draggable (pointer-events off) so the overlay stays aligned.
+// ponytail: keyless embed + overlay; switch to the Maps JavaScript API (needs a key) for a live, pannable map.
+const FENCE_ZOOM = 17;
+const metresPerPx = (lat: number) => 156543.03392 * Math.cos(lat * Math.PI / 180) / 2 ** FENCE_ZOOM;
+let HERE: { lat: number; lng: number; acc: number } | null = null; let HERE_AT = 0; let FENCE_SEL = '';
+function fenceHtml(s: School | undefined): string {
+  if (!s) return '';
+  if (s.lat == null) return `<div class="fence-empty">${ic('pin', 18)}<span>${esc(s.name)}'s location isn't set yet — your coordinator sets it.</span></div>`;
+  const mpp = metresPerPx(s.lat); const r = CONFIG.geofenceMeters / mpp;
+  let me = '', status = `<span class="fence-status">${ic('pin', 15)}Finding you…</span>`;
+  if (HERE) {
+    const d = haversine(HERE, s as LatLng); const inside = d <= CONFIG.geofenceMeters;
+    const dx = ((HERE.lng - s.lng!) * 111320 * Math.cos(s.lat * Math.PI / 180)) / mpp, dy = (-(HERE.lat - s.lat) * 111320) / mpp;
+    const pos = (v: number) => `clamp(10px, calc(50% + ${v.toFixed(1)}px), calc(100% - 10px))`; // off the map → pinned to its edge
+    me = `<span class="fence-acc" style="left:${pos(dx)};top:${pos(dy)};width:${Math.min(2 * HERE.acc / mpp, 400).toFixed(0)}px;height:${Math.min(2 * HERE.acc / mpp, 400).toFixed(0)}px"></span><span class="fence-me" style="left:${pos(dx)};top:${pos(dy)}" aria-hidden="true"></span>`;
+    status = `<span class="fence-status ${inside ? 'in' : 'out'}">${ic(inside ? 'check' : 'alert', 15)}${inside ? `Inside the fence · ${Math.round(d)} m from school` : `Outside · ${d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'} away — get within ${CONFIG.geofenceMeters} m`}</span>`;
+  }
+  return `<div class="fence" role="img" aria-label="Map of ${esc(s.name)} with its ${CONFIG.geofenceMeters} m check-in area${HERE ? '' : ''}">
+      <iframe tabindex="-1" loading="lazy" title="Map of ${esc(s.name)}" src="https://maps.google.com/maps?q=${s.lat},${s.lng}&z=${FENCE_ZOOM}&output=embed"></iframe>
+      <span class="fence-ring" style="width:${(2 * r).toFixed(0)}px;height:${(2 * r).toFixed(0)}px"></span>${me}
+    </div>
+    <div class="fence-foot">${status}<button class="btn ghost sm" onclick="locateMe(true)">${ic('pin', 15)}Refresh</button></div>`;
+}
+// Redraws just the map box (no full render, so the page and the select keep their state).
+function drawFence(): void {
+  const box = document.getElementById('fenceBox'); const sel = document.getElementById(FENCE_SEL) as HTMLSelectElement | null;
+  if (box && sel) box.innerHTML = fenceHtml(STORE.school(sel.value));
+}
+const fenceBox = (selectId: string, s?: School) => { FENCE_SEL = selectId; if (Date.now() - HERE_AT > 60000) setTimeout(() => locateMe(false), 0); return `<div id="fenceBox">${fenceHtml(s)}</div>`; };
+async function locateMe(manual: boolean): Promise<void> {
+  const sel = document.getElementById(FENCE_SEL) as HTMLSelectElement | null; if (!sel) return;
+  HERE_AT = Date.now();
+  try { HERE = await getPos(STORE.school(sel.value)); drawFence(); }
+  catch (e) { if (manual) flash('err', (e as Error).message); const st = document.querySelector('#fenceBox .fence-status'); if (st) st.textContent = (e as Error).message; }
 }
 
 /* ---------- RAG / scoring ---------- */
@@ -457,11 +496,11 @@ function tHome(u: User): string {
         <small>${open ? `${esc(schoolName(open.inSchool))} · since ${fmtT(open.inTime)}${open.inLate ? ` · ${open.inLate} min late` : ' · on time'}` : `Reporting time ${CONFIG.expectedStart} · within ${CONFIG.geofenceMeters} m of school`}</small>
       </div></div>
       <label class="field-l" for="punchSchool">School</label>
-      <select id="punchSchool">${schools.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+      <select id="punchSchool" onchange="drawFence();locateMe(false)">${schools.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+      ${fenceBox('punchSchool', schools[0])}
       ${open ? `<button class="btn dark block" onclick="punch('out')">${ic('logout', 18)}Check out</button>`
         : `<button class="btn block" onclick="punch('in')">${ic('login', 18)}Check in</button>`}
       ${schools.length > 1 ? '<p class="hint">You can check in at one school and check out at another.</p>' : ''}
-      ${schools.some((s) => s.lat != null) ? `<details class="loc"><summary class="link-sum">${ic('pin', 16)}School on the map</summary>${schools.filter((s) => s.lat != null).map((s) => `<p class="hint"><b>${esc(s.name)}</b> · <a href="${mapsHref(s)}" target="_blank" rel="noopener">Directions</a></p>${mapEmbed(s)}`).join('')}</details>` : ''}
     </section>
     <div class="kpis">
       ${kpi('Avg delay · week', avgLateWindow(u.name, 'week') + ' min', 'clock')}
@@ -1394,7 +1433,8 @@ function mVisit(u: User): string {
     (todays.length ? `<div class="notice brand">${ic('calendar', 18)}<span>Planned today: <b>${todays.map((p) => esc(schoolName(p.school))).join(', ')}</b></span></div>` : '') +
     `<section class="card">
       <label class="field-l" for="vSchool">School</label>
-      <select id="vSchool">${schools.map((s) => `<option value="${s.id}"${todays.some((p) => p.school === s.id) ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
+      <select id="vSchool" onchange="drawFence();locateMe(false)">${schools.map((s) => `<option value="${s.id}"${todays.some((p) => p.school === s.id) ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
+      ${fenceBox('vSchool', schools.find((s) => todays.some((p) => p.school === s.id)) || schools[0])}
       <button class="btn block" onclick="unlockVisit()">${ic('pin', 18)}Verify I'm at this school</button>
     </section>
     <h2 class="section-title">School locations · ${schools.filter((s) => s.lat != null).length}/${schools.length} set</h2>

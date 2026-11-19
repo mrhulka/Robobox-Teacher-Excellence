@@ -29,11 +29,16 @@ const STORE = (() => {
     // Seeded lesson sessions ship without ids; give them stable ones so they can be replaced or removed.
     function withIds(d) {
         d.lessons = d.lessons.map((p, i) => p.id ? p : { ...p, id: 'lesson_seed_' + i });
-        // Geofences resolved from the sheet's Google Maps links fill in schools a device hasn't set yet.
-        d.schools.forEach((s) => { const seed = SEED.schools.find((x) => x.id === s.id); if (s.lat == null && seed && seed.lat != null) {
-            s.lat = seed.lat;
-            s.lng = seed.lng;
-        } });
+        // Geofences resolved from the sheet's Google Maps links fill in schools a device hasn't set yet,
+        // and replace a pin when Robobox corrects that school's link.
+        d.schools.forEach((s) => {
+            const seed = SEED.schools.find((x) => x.id === s.id);
+            if (seed && seed.lat != null && (s.lat == null || s.mapLink !== seed.mapLink)) {
+                s.lat = seed.lat;
+                s.lng = seed.lng;
+                s.mapLink = seed.mapLink;
+            }
+        });
         return d;
     }
     let db = load();

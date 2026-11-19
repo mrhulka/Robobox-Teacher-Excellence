@@ -106,12 +106,15 @@ Check-in/out and coordinator visits read the phone's GPS (browser Geolocation) a
 `CONFIG.geofenceMeters` (100 m) of the school's pin. Each school's pin is set by its coordinator (*Visit →
 School locations*) or by Parth/Manish (*Coordinators → School locations*): paste the school's **Google Maps
 link** (or `lat, lng`) — `parseLatLng()` reads the place pin from it — or stand at the gate and tap *Use my
-current location*. Each school shows an embedded Google Map (no API key needed) and teachers see their school
-on the map with directions. **Teachers can't set a pin**: check-in at a school without one is refused.
+current location*. **Check-in map:** on the teacher's Home (and the coordinator's Visit screen) the selected school shows on a
+Google map with its 100 m fence drawn as a ring and the user as a blue dot (with GPS accuracy halo), plus
+"Inside the fence · 40 m" / "Outside · 300 m away". The keyless Google embed can't draw shapes, so the ring and
+dot are an overlay on a fixed zoom-17 map centred on the pin (Web Mercator scale → exact pixels); the map is
+not draggable so they stay aligned. For a live, pannable map, switch `fenceHtml()` to the Maps JavaScript API
+(needs a Google API key). **Teachers can't set a pin**: check-in at a school without one is refused.
 The sheet's `maps.app.goo.gl` short links were resolved once to coordinates and are built into `seed.ts`
-(28 of 29 schools). **HARMONY is unset**: its sheet link points to G. D. Somani Memorial School (Cuffe Parade),
-which is now G D Somani's pin (G D Somani's own link was a copy of RIS's). Paste HARMONY's correct link to set it.
-**Ideal** resolved to "Ideal College of Pharmacy" (Dwarli, Malang Gad Rd) — confirm it's the school's campus.
+(all 29 schools; HARMONY, G D Somani, Ideal and RIS from Robobox's corrected links). When a school's link
+changes in `seed.ts`, devices pick up the new pin on next load.
 Short links can't be read inside a browser; to change a pin, open the link and paste the full address-bar link.
 
 ## Data
