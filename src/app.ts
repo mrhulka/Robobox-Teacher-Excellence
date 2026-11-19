@@ -39,6 +39,7 @@ const ICONS: Record<string, string> = {
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  arrowR: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   minus: '<path d="M5 12h14"/>',
@@ -366,6 +367,14 @@ function pageHead(title: string, sub = '', actions = ''): string {
 }
 const kpi = (label: string, value: string | number, icon: string, tone = '') =>
   `<div class="stat"><div class="stat-top"><span class="stat-ic ${tone}">${ic(icon, 16)}</span><span class="stat-l">${label}</span></div><div class="stat-n">${value}</div></div>`;
+// Progress ring (fills on arrival). `dark` for the charcoal hero.
+function ring(value: number, total: number, label: string, size = 64, dark = false): string {
+  const r = 28, c = 2 * Math.PI * r, f = total ? Math.min(1, value / total) : 0;
+  return `<svg class="ring" role="img" aria-label="${esc(label)}" width="${size}" height="${size}" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="${r}" fill="none" stroke="${dark ? '#3B4048' : '#EFEBE2'}" stroke-width="7"/>
+    <circle class="ring-v" cx="32" cy="32" r="${r}" fill="none" stroke="${dark ? '#F2BE14' : '#23262C'}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - f)).toFixed(1)}" style="--c:${c.toFixed(1)}" transform="rotate(-90 32 32)"/>
+    <text x="32" y="${dark ? 34 : 37}" text-anchor="middle" class="ring-n" fill="${dark ? '#FFFFFF' : '#23262C'}">${value}</text>${dark ? `<text x="32" y="45" text-anchor="middle" class="ring-of">of ${total}</text>` : ''}</svg>`;
+}
 // A KPI tile that opens something (Overview → Schools, Teachers…).
 const kpiBtn = (label: string, value: string | number, icon: string, fn: string) =>
   `<button class="stat tap" onclick="${fn}"><div class="stat-top"><span class="stat-ic">${ic(icon, 16)}</span><span class="stat-l">${label}</span>${ic('chevR', 16)}</div><div class="stat-n">${value}</div></button>`;
@@ -480,7 +489,9 @@ let LG: { list: Person[]; active: number; pick: Person | null } = { list: [], ac
 function viewLogin(): string {
   LG = { list: [], active: -1, pick: null };
   return `<div class="login">
+    <span class="orb orb-a" aria-hidden="true"></span><span class="orb orb-b" aria-hidden="true"></span>
     <img class="logo-full" src="assets/logo.webp" width="260" height="123" alt="The Robobox — Teacher Excellence">
+    <h1 class="login-title">${(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning.' : h < 17 ? 'Good afternoon.' : 'Good evening.'; })()}<br>Let's get you in.</h1>
     <p class="login-sub">One Robobox classroom, delivered consistently.</p>
     <form class="card login-form" onsubmit="lgSubmit(event)" autocomplete="on">
       <label class="field-l" for="lgName">Name</label>
@@ -489,7 +500,7 @@ function viewLogin(): string {
       <label class="field-l" for="lgPw">Password</label>
       <input id="lgPw" name="password" type="password" autocomplete="current-password" placeholder="Your password">
       <p class="err" id="lgErr" role="alert"></p>
-      <button class="btn block lg" type="submit">${ic('login', 18)}Sign in</button>
+      <button class="btn block lg cta" type="submit">Sign in${ic('arrowR', 18)}</button>
       <p class="hint center">First time? Your password is your name. Change it in your profile.</p>
     </form>
   </div>`;
@@ -602,11 +613,13 @@ function tHome(u: User): string {
   const tasks = STORE.get('tasks').filter((x) => x.teacher === u.name && x.status !== 'Done');
   const openReqs = STORE.get('requests').filter((r) => r.teacher === u.name && reqStatus(r) !== 'Fulfilled').length;
   const monthDays = teacherAtt(u.name).filter((a) => a.inTime && a.date.startsWith(todayStr().slice(0, 7))).length;
-  return pageHead(`Hi, ${esc(cap(u.name.split(' ')[0].toLowerCase()))}`, fmtLong(todayStr())) +
+  // Workdays so far this month — the attendance ring's whole.
+  let workdays = 0; for (let d = todayStr().slice(0, 8) + '01'; d <= todayStr(); d = addDays(d, 1)) if (CONFIG.workDays.includes(parseD(d).getDay())) workdays++;
+  return `<p class="eyebrow">${esc(fmtLong(todayStr()).toUpperCase())}</p>` + pageHead(`Hi, ${esc(cap(u.name.split(' ')[0].toLowerCase()))}`) +
     (unreadUpdates(u) ? `<button class="notice brand as-btn" onclick="openOfficial()">${ic('megaphone', 18)}<span><b>${plural(unreadUpdates(u), 'new update')}</b> from Robobox — tap to read</span></button>` : '') +
     (overdueWeeks(u.name).length ? `<button class="notice err as-btn" onclick="goWeek('${overdueWeeks(u.name)[0]}')">${ic('alert', 18)}<span><b>Lesson plan update overdue</b> — week of ${fmtD(overdueWeeks(u.name)[0])}. Tap to update.</span></button>` : '') +
     (lv ? `<div class="notice info">${ic('calx', 18)}<span>You're on approved ${esc(lv.type.toLowerCase())} leave until ${fmtD(lv.to)}.</span></div>` : '') +
-    `<section class="card checkin">
+    `<section class="card checkin hero">
       <div class="checkin-status${open ? ' in' : ''}"><span class="status-dot" aria-hidden="true"></span><div>
         <b>${open ? 'Checked in' : 'Not checked in'}</b>
         <small>${open ? `${esc(schoolName(open.inSchool))} · since ${fmtT(open.inTime)}${open.inLate ? ` · ${open.inLate} min late` : ' · on time'}` : `Reporting time ${CONFIG.expectedStart} · within ${CONFIG.geofenceMeters} m of school`}</small>
@@ -615,12 +628,12 @@ function tHome(u: User): string {
       <select id="punchSchool" onchange="drawFence();locateMe(false)">${schools.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
       ${fenceBox('punchSchool')}
       ${open ? `<button class="btn dark block" onclick="punch('out')">${ic('logout', 18)}Check out</button>`
-        : `<button class="btn block" onclick="punch('in')">${ic('login', 18)}Check in</button>`}
+        : `<button class="btn block cta" onclick="punch('in')">${ic('login', 18)}Check in</button>`}
       ${schools.length > 1 ? '<p class="hint">You can check in at one school and check out at another.</p>' : ''}
     </section>
     <div class="kpis">
-      ${kpi('Avg delay · week', avgLateWindow(u.name, 'week') + ' min', 'clock')}
-      ${kpi('Days present · month', monthDays, 'calendar')}
+      <div class="stat ring-tile">${ring(monthDays, workdays, `${monthDays} of ${workdays} days present`)}<span><b>Days present</b><small>of ${workdays} so far this month</small></span></div>
+      ${kpi('Avg delay · week', avgLateWindow(u.name, 'week') + '<small> min</small>', 'clock')}
       ${kpi('Open tasks', tasks.length, 'clipboard')}
       ${kpi('Open requests', openReqs, 'package')}
     </div>
@@ -1061,11 +1074,11 @@ function tLessons(u: User): string {
     ${plans.length && wk <= cur ? `<h2 class="section-title">Weekly progress ${planBadge(planStatus(u.name, wk))}</h2>
       <section class="card">
         ${plans.map((p, i) => `<div class="q"><div class="qt"><b>${esc(p.grade)}</b> · ${esc(p.topic)}</div>
-          <div class="rate opts" role="group" aria-label="${esc(p.grade)} progress">${PLAN_STATES.filter((st) => !(p.teachers && st === 'Not my class')).map((st) => `<button class="${st === 'Done' ? 'yes' : st === 'Not done' ? 'no' : ''}${LPD[p.grade] === st ? ' on' : ''}" onclick="setPlanState(this,${i},'${st}')">${st}</button>`).join('')}</div></div>`).join('')}
-        <div id="lpReasonBox" class="reveal"${reasonReq ? '' : ' hidden'}><label class="field-l" for="lpReason">What got in the way? <span class="req-tag">Required</span></label>
+          <div class="rate opts" role="group" aria-label="${esc(p.grade)} progress">${PLAN_STATES.filter((st) => !(p.teachers && st === 'Not my class')).map((st) => `<button class="${st === 'Done' ? 'yes' : st === 'Not done' ? 'no' : st === 'Partly done' ? 'partly' : 'na'}${LPD[p.grade] === st ? ' on' : ''}" aria-pressed="${LPD[p.grade] === st}" onclick="setPlanState(this,${i},'${st}')">${st}</button>`).join('')}</div></div>`).join('')}
+        <div id="lpReasonBox" class="reveal reason-box"${reasonReq ? '' : ' hidden'}><label class="field-l" for="lpReason">What got in the way? <span class="req-tag">Required</span></label>
           <textarea id="lpReason" rows="3" placeholder="e.g. Exams took the period on Thursday">${esc(ups[0]?.reason || '')}</textarea></div>
         <p class="err" id="lpReasonErr" role="alert"></p>
-        <button class="btn block" onclick="submitPlanUpdate()">${ic('check', 18)}${ups.length ? 'Update progress' : 'Submit weekly update'}</button>
+        <button class="btn block cta" onclick="submitPlanUpdate()">${ic('check', 18)}${ups.length ? 'Update progress' : 'Submit weekly update'}</button>
         <p class="hint">${ups.length ? `Last updated ${fmtD(ups[0].at)}${ups[0].late ? ' — after the deadline' : ''}.` : `Due ${fmtLong(weekDue(wk))}.`}</p>
       </section>` : plans.length ? `<p class="hint">Progress for this week opens on ${fmtLong(wk)}.</p>` : ''}
     ${scheduleList(u, wk)}`;
@@ -1551,9 +1564,9 @@ function mVisit(u: User): string {
   return pageHead('School visit', `Check in when you reach the school (within ${CONFIG.geofenceMeters} m). The review form opens after you've checked in.`) +
     (evToday.length ? `<div class="notice info">${ic('flag', 18)}<span>Today at your schools: ${evToday.map((e) => `<b>${esc(e.title || e.type)}</b> at ${esc(schoolName(e.school))}`).join(', ')}</span></div>` : '') +
     (todays.length ? `<div class="notice brand">${ic('calendar', 18)}<span>Planned today: <b>${todays.map((p) => esc(schoolName(p.school))).join(', ')}</b></span></div>` : '') +
-    (ci ? `<section class="card checkin"><div class="checkin-status in"><span class="status-dot" aria-hidden="true"></span><div>
+    (ci ? `<section class="card checkin hero"><div class="checked"><span class="tick" aria-hidden="true"><span class="burst"></span>${ic('check', 26)}</span><div>
         <b>Checked in at ${esc(schoolName(ci.school))}</b><small>${fmtLong(ci.date)} · reached at ${fmtT(ci.at)} · ${ci.dist} m from the school</small></div></div>
-        <button class="btn block" onclick="startReview('${ci.id}')">${ic('clipboard', 18)}Review a teacher here</button></section>` : '') +
+        <button class="btn block cta" onclick="startReview('${ci.id}')">${ic('clipboard', 18)}Review a teacher here</button></section>` : '') +
     `<section class="card"><h3 class="card-title">${ci ? 'Moved to another school?' : 'Check in at a school'}</h3>
       <label class="field-l" for="vSchool">School</label>
       <select id="vSchool" onchange="drawFence();locateMe(false)">${schools.map((s) => `<option value="${s.id}"${s.id === pre ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
@@ -1749,8 +1762,10 @@ function cOverview(u: User): string {
   const leaves = STORE.get('leaves'); const onLeave = leaves.filter((l) => l.status === 'Approved' && leaveCovers(l, today)); const pending = leaves.filter((l) => l.status === 'Pending');
   const seg = (k: RagOrNone, label: string) => c[k] ? `<span class="seg-${k}" style="width:${(c[k] / n) * 100}%" title="${label}: ${c[k]}"></span>` : '';
   return pageHead('Network overview', `All schools · ${fmtLong(today)}`) +
-    `<div class="kpis">${kpiBtn('Teachers', ts.length, 'users', "go('teachers')")}${seesAll(u) ? kpiBtn('Coordinators', STORE.get('moderators').length, 'briefcase', "go('coords')") : kpi('Coordinators', STORE.get('moderators').length, 'briefcase')}
-      ${kpi('Present today', `${presentToday(ts.map((t) => t.name))}<small> / ${ts.length}</small>`, 'check')}${kpiBtn('Schools', STORE.get('schools').length, 'home', 'openSchools()')}</div>
+    `<section class="card hero present-hero">${ring(presentToday(ts.map((t) => t.name)), ts.length, `${presentToday(ts.map((t) => t.name))} of ${ts.length} teachers present`, 120, true)}
+      <div><b>Teachers present</b><span>${onLeave.length} on approved leave<br>${Math.max(0, ts.length - presentToday(ts.map((t) => t.name)) - onLeave.length)} not checked in yet</span>
+      <button class="link-btn" onclick="openSchools()">By school →</button></div></section>
+    <div class="kpis kpis-3">${kpiBtn('Teachers', ts.length, 'users', "go('teachers')")}${seesAll(u) ? kpiBtn('Coordinators', STORE.get('moderators').length, 'briefcase', "go('coords')") : kpi('Coordinators', STORE.get('moderators').length, 'briefcase')}${kpiBtn('Schools', STORE.get('schools').length, 'home', 'openSchools()').replace('class="stat tap"', 'class="stat tap brand"')}</div>
     <h2 class="section-title">Teacher status</h2>
     <section class="card"><div class="stack" role="img" aria-label="Green ${c.green}, Amber ${c.amber}, Red ${c.red}, Not rated ${c.none}">${seg('green', 'Green')}${seg('amber', 'Amber')}${seg('red', 'Red')}${seg('none', 'Not rated')}</div>
       <div class="legend">${(['green', 'amber', 'red', 'none'] as RagOrNone[]).map((k) => `<span><i class="seg-${k}"></i><b>${c[k]}</b>${k === 'green' ? 'On track' : k === 'amber' ? 'Coaching needed' : k === 'red' ? 'Urgent' : 'Not rated'}</span>`).join('')}</div></section>
