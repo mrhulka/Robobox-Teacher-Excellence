@@ -115,16 +115,15 @@ Check-in/out and coordinator visits read the phone's GPS (browser Geolocation) a
 `CONFIG.geofenceMeters` (100 m) of the school's pin. Each school's pin is set by its coordinator (*Visit →
 School locations*) or by Parth/Manish (*Coordinators → School locations*): paste the school's **Google Maps
 link** (or `lat, lng`) — `parseLatLng()` reads the place pin from it — or stand at the gate and tap *Use my
-current location*. **Check-in map:** on the teacher's Home (and the coordinator's Visit screen) the selected school shows on a
-Google map with its 100 m fence and the user as a blue dot (with GPS accuracy halo), plus "Inside the fence ·
-40 m" / "Outside · 300 m away".
+current location*. **Check-in map:** on the teacher's Home (and the coordinator's Visit screen) the selected school shows on an
+**OpenStreetMap** map (free, no API key, no billing) with its 100 m fence as a circle, the school as a pin and
+the user as a blue dot with a GPS-accuracy halo, plus "Inside the fence · 40 m" / "Outside · 300 m away". It
+drags and pinch-zooms like any map app and the fence and dot stay on it; *Re-centre* frames the school (and you,
+if you're nearby but outside). Built with [Leaflet](https://leafletjs.com) 1.9.4, vendored in
+`assets/vendor/leaflet/` (BSD-2, licence included) — no CDN. Tiles come from `tile.openstreetmap.org`, which is
+fine at Robobox's volume; for heavy use point `OSM_TILES` in `src/app.ts` at a tile provider (MapTiler, Stadia…)
+per the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
-- **With `CONFIG.googleMapsKey` set** (in `src/config.ts`): the real Google map via the Maps JavaScript API —
-  drag, pinch-zoom, fullscreen — with the fence drawn as a Google Maps Circle and the user as a marker. Create
-  the key in Google Cloud (enable *Maps JavaScript API*) and restrict it to Robobox's domain.
-- **Without a key**: the keyless Google embed with the fence and dot overlaid at a fixed zoom-17 scale (the
-  embed can't draw shapes). *Tap to explore* makes it a normal draggable/zoomable map (the overlay hides,
-  since it can't follow); *Re-centre* brings the fence back. **Teachers can't set a pin**: check-in at a school without one is refused.
 The sheet's `maps.app.goo.gl` short links were resolved once to coordinates and are built into `seed.ts`
 (all 29 schools; HARMONY, G D Somani, Ideal and RIS from Robobox's corrected links). When a school's link
 changes in `seed.ts`, devices pick up the new pin on next load.

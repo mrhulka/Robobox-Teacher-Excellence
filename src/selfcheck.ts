@@ -121,13 +121,5 @@
   ok(ll(' 19.2183, 73.0868 ') === '19.2183,73.0868', 'plain coordinates');
   ok(ll('https://maps.app.goo.gl/6hMX61Bba2fiLHvm6') === null && ll('99.5, 10.1') === null, 'short links and bad ranges rejected');
 
-  // Geofence map overlay (kept in sync with app.ts metresPerPx / fenceHtml): Web Mercator scale at zoom 17.
-  const mpp = (lat: number) => 156543.03392 * Math.cos(lat * Math.PI / 180) / 2 ** 17;
-  ok(Math.abs(mpp(0) - 1.1943) < 0.001, 'zoom-17 scale at the equator');
-  const lat0 = 19.2511; const r = 100 / mpp(lat0); // fence radius in px
-  const north = (-(100 / 111320) * 111320) / mpp(lat0); // a point 100 m north → px offset
-  ok(Math.abs(Math.abs(north) - r) < 0.01 && north < 0, '100 m north sits exactly on the ring, above the pin');
-  ok(Math.round(r) === 89, 'fence ring ≈ 89 px radius in Mumbai at zoom 17');
-
   console.log('selfcheck OK');
 })();

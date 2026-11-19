@@ -240,15 +240,17 @@ async function atSchool(school) {
     const dist = haversine(pos, { lat: school.lat, lng: school.lng });
     return { ok: dist <= CONFIG.geofenceMeters, dist };
 }
-/* ---------- geofence map: the real Google map, the fence circle and where you are ---------- */
-// With CONFIG.googleMapsKey: the Maps JavaScript API — a normal Google map (drag, pinch-zoom), with the fence
-// drawn as a Circle and you as a blue dot. Without a key (the keyless embed can't draw shapes): the embed with
-// the fence and dot overlaid at a fixed zoom-17 scale; tap the map to explore it, Re-centre brings the fence back.
-const FENCE_ZOOM = 17;
-const metresPerPx = (lat) => 156543.03392 * Math.cos(lat * Math.PI / 180) / 2 ** FENCE_ZOOM;
+/* ---------- geofence map: OpenStreetMap (Leaflet) with the fence circle and where you are ---------- */
+// Free, no key: drag and pinch/zoom like any map app; the fence and your dot are part of the map, so they
+// stay put while it moves. Leaflet is vendored in assets/vendor/leaflet (no CDN needed).
+// ponytail: tiles from tile.openstreetmap.org — fine at Robobox's volume; for heavy use switch the URL in
+// OSM_TILES to a tile provider (MapTiler, Stadia, Thunderforest…) per the OSM tile usage policy.
+const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 let HERE = null;
 let HERE_AT = 0;
 let FENCE_SEL = '';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let LM = null;
 const fenceSchool = () => { const sel = document.getElementById(FENCE_SEL); return sel ? STORE.school(sel.value) : undefined; };
 function fenceStatus(s) {
     if (!HERE)
@@ -257,30 +259,11 @@ function fenceStatus(s) {
     const inside = d <= CONFIG.geofenceMeters;
     return `<span class="fence-status ${inside ? 'in' : 'out'}">${ic(inside ? 'check' : 'alert', 15)}${inside ? `Inside the fence · ${Math.round(d)} m from school` : `Outside · ${d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'} away — get within ${CONFIG.geofenceMeters} m`}</span>`;
 }
-function overlayMe(s) {
-    if (!HERE)
-        return '';
-    const mpp = metresPerPx(s.lat);
-    const dx = ((HERE.lng - s.lng) * 111320 * Math.cos(s.lat * Math.PI / 180)) / mpp, dy = (-(HERE.lat - s.lat) * 111320) / mpp;
-    const pos = (v) => `clamp(10px, calc(50% + ${v.toFixed(1)}px), calc(100% - 10px))`;
-    const a = Math.min(2 * HERE.acc / mpp, 400).toFixed(0);
-    return `<span class="fence-acc" style="left:${pos(dx)};top:${pos(dy)};width:${a}px;height:${a}px"></span><span class="fence-me" style="left:${pos(dx)};top:${pos(dy)}"></span>`;
-}
-function fenceShell(s) {
-    const key = !!CONFIG.googleMapsKey;
-    return `<div class="fence${key ? ' live' : ''}" id="fenceMap" data-s="${s.id}" aria-label="Map of ${esc(s.name)} with its ${CONFIG.geofenceMeters} m check-in area">
-      ${key ? '' : `<iframe loading="lazy" title="Map of ${esc(s.name)}" src="https://maps.google.com/maps?q=${s.lat},${s.lng}&z=${FENCE_ZOOM}&output=embed"></iframe>
-        <span class="fence-ring" style="width:${(2 * CONFIG.geofenceMeters / metresPerPx(s.lat)).toFixed(0)}px;height:${(2 * CONFIG.geofenceMeters / metresPerPx(s.lat)).toFixed(0)}px"></span><span id="fenceMe">${overlayMe(s)}</span>
-        <button class="fence-shield" onclick="fenceExplore()"><span>${ic('search', 14)}Tap to explore the map</span></button>`}
-    </div>
+const fenceShell = (s) => `<div class="fence" id="fenceMap" data-s="${s.id}" role="region" aria-label="Map of ${esc(s.name)} with its ${CONFIG.geofenceMeters} m check-in area"></div>
     <div class="fence-foot"><span id="fenceStat">${fenceStatus(s)}</span>
-      ${key ? '' : `<button class="btn ghost sm" id="fenceRecentre" hidden onclick="fenceRebuild()">${ic('target', 15)}Re-centre</button>`}
+      <button class="btn ghost sm" onclick="fenceRecentre()">${ic('target', 15)}Re-centre</button>
       <button class="btn ghost sm" onclick="locateMe(true)">${ic('pin', 15)}Refresh</button></div>`;
-}
-function fenceExplore() { var _a, _b; (_a = document.getElementById('fenceMap')) === null || _a === void 0 ? void 0 : _a.classList.add('exploring'); (_b = document.getElementById('fenceRecentre')) === null || _b === void 0 ? void 0 : _b.removeAttribute('hidden'); }
-function fenceRebuild() { const box = document.getElementById('fenceBox'); const s = fenceSchool(); if (box && s)
-    box.innerHTML = fenceShell(s); }
-// Updates the map in place: rebuilds only when the school changes, otherwise moves your dot.
+// Builds the map once per school, then only moves your dot.
 function drawFence() {
     const box = document.getElementById('fenceBox');
     const s = fenceSchool();
@@ -290,19 +273,54 @@ function drawFence() {
         box.innerHTML = `<div class="fence-empty">${ic('pin', 18)}<span>${esc(s.name)}'s location isn't set yet — your coordinator sets it.</span></div>`;
         return;
     }
-    const map = document.getElementById('fenceMap');
-    if (!map || map.dataset.s !== s.id) {
+    let el = document.getElementById('fenceMap');
+    if (!el || el.dataset.s !== s.id) {
         box.innerHTML = fenceShell(s);
-        GM = null;
+        el = document.getElementById('fenceMap');
     }
     document.getElementById('fenceStat').innerHTML = fenceStatus(s);
-    if (CONFIG.googleMapsKey)
-        gmapDraw(s);
-    else {
-        const me = document.getElementById('fenceMe');
-        if (me)
-            me.innerHTML = overlayMe(s);
+    if (typeof L === 'undefined') {
+        el.innerHTML = `<p class="fence-off">Map unavailable offline.</p>`;
+        return;
     }
+    const school = [s.lat, s.lng];
+    if (!LM || LM.el !== el) {
+        if (LM)
+            LM.map.remove(); // the old container left the page on re-render
+        const map = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView(school, 17);
+        map.createPane('you').style.zIndex = '650'; // your dot above the school pin, even standing right at it
+        L.tileLayer(OSM_TILES, { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+        L.circle(school, { radius: CONFIG.geofenceMeters, color: '#F2BE14', weight: 2, fillColor: '#F2BE14', fillOpacity: 0.18, interactive: false, className: 'fence-circle' }).addTo(map);
+        L.marker(school, { title: s.name, keyboard: false, icon: L.divIcon({ className: 'school-pin', html: ic('home', 16), iconSize: [32, 32], iconAnchor: [16, 32] }) }).addTo(map);
+        LM = { el, map, me: null, acc: null, fitted: false };
+    }
+    if (!HERE)
+        return;
+    const me = [HERE.lat, HERE.lng];
+    if (!LM.me) {
+        LM.acc = L.circle(me, { radius: HERE.acc, color: '#1A73E8', weight: 1, opacity: 0.35, fillColor: '#1A73E8', fillOpacity: 0.12, interactive: false }).addTo(LM.map);
+        LM.me = L.circleMarker(me, { radius: 8, color: '#FFFFFF', weight: 3, fillColor: '#1A73E8', fillOpacity: 1, className: 'fence-me', pane: 'you' }).bindTooltip('You are here').addTo(LM.map);
+    }
+    else {
+        LM.me.setLatLng(me);
+        LM.acc.setLatLng(me);
+        LM.acc.setRadius(HERE.acc);
+    }
+    if (!LM.fitted) {
+        fenceRecentre();
+        LM.fitted = true;
+    } // once — after that the user drives the map
+}
+// School at zoom 17; if you're outside but nearby, frame both so the way in is visible.
+function fenceRecentre() {
+    const s = fenceSchool();
+    if (!LM || !s || s.lat == null)
+        return;
+    const d = HERE ? haversine(HERE, s) : 0;
+    if (HERE && d > CONFIG.geofenceMeters && d < 5000)
+        LM.map.fitBounds([[s.lat, s.lng], [HERE.lat, HERE.lng]], { padding: [36, 36], maxZoom: 17 });
+    else
+        LM.map.setView([s.lat, s.lng], 17);
 }
 const fenceBox = (selectId) => { FENCE_SEL = selectId; setTimeout(() => { drawFence(); if (Date.now() - HERE_AT > 60000)
     locateMe(false); }, 0); return '<div id="fenceBox"></div>'; };
@@ -312,6 +330,8 @@ async function locateMe(manual) {
     HERE_AT = Date.now();
     try {
         HERE = await getPos(fenceSchool());
+        if (LM)
+            LM.fitted = false;
         drawFence();
     }
     catch (e) {
@@ -321,63 +341,6 @@ async function locateMe(manual) {
         if (st)
             st.textContent = e.message;
     }
-}
-let GMAPS = null;
-function loadGmaps() {
-    if (!GMAPS)
-        GMAPS = new Promise((res, rej) => {
-            window.__gmapsReady = () => res();
-            const sc = document.createElement('script');
-            sc.async = true;
-            sc.onerror = () => { GMAPS = null; rej(new Error('Google Maps could not load.')); };
-            sc.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(CONFIG.googleMapsKey)}&loading=async&callback=__gmapsReady`;
-            document.head.appendChild(sc);
-        });
-    return GMAPS;
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let GM = null;
-async function gmapDraw(s) {
-    try {
-        await loadGmaps();
-    }
-    catch (e) {
-        const st = document.getElementById('fenceStat');
-        if (st)
-            st.textContent = e.message;
-        return;
-    }
-    const el = document.getElementById('fenceMap');
-    if (!el || el.dataset.s !== s.id)
-        return;
-    const g = google.maps;
-    const centre = { lat: s.lat, lng: s.lng };
-    if (!GM || GM.el !== el) {
-        const map = new g.Map(el, { center: centre, zoom: FENCE_ZOOM, mapTypeControl: false, streetViewControl: false, clickableIcons: false });
-        new g.Circle({ map, center: centre, radius: CONFIG.geofenceMeters, strokeColor: '#F2BE14', strokeWeight: 2, fillColor: '#F2BE14', fillOpacity: 0.18, clickable: false });
-        new g.Marker({ map, position: centre, title: s.name });
-        GM = { el, map, me: null, acc: null, fitted: false };
-    }
-    if (!HERE)
-        return;
-    const me = { lat: HERE.lat, lng: HERE.lng };
-    if (!GM.me) {
-        GM.acc = new g.Circle({ map: GM.map, center: me, radius: HERE.acc, strokeColor: '#1A73E8', strokeOpacity: 0.3, strokeWeight: 1, fillColor: '#1A73E8', fillOpacity: 0.12, clickable: false });
-        GM.me = new g.Marker({ map: GM.map, position: me, title: 'You are here', zIndex: 9, icon: { path: g.SymbolPath.CIRCLE, scale: 8, fillColor: '#1A73E8', fillOpacity: 1, strokeColor: '#FFFFFF', strokeWeight: 3 } });
-    }
-    else {
-        GM.me.setPosition(me);
-        GM.acc.setCenter(me);
-        GM.acc.setRadius(HERE.acc);
-    }
-    // Outside the fence (but nearby): fit both so the way in is visible. Once — after that the user drives.
-    if (!GM.fitted && haversine(HERE, s) > CONFIG.geofenceMeters && haversine(HERE, s) < 5000) {
-        const b = new g.LatLngBounds();
-        b.extend(centre);
-        b.extend(me);
-        GM.map.fitBounds(b, 48);
-    }
-    GM.fitted = true;
 }
 /* ---------- RAG / scoring ---------- */
 function visitScore(fb) {

@@ -591,12 +591,6 @@ body:has(.login){background:radial-gradient(640px 520px at 88% -4%,rgba(242,190,
 @media (prefers-reduced-transparency:reduce){.topbar,.tabbar{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 /* geofence map: the school pin at the centre, the fence ring, you as a blue dot */
 .fence{position:relative;height:240px;margin:12px 0 0;border-radius:18px;overflow:hidden;background:var(--sunken);border:1px solid var(--hairline)}
-.fence iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
-.fence-ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;background:rgba(242,190,20,.16);border:2px solid var(--brand);box-shadow:0 0 0 1px rgba(35,38,44,.08);pointer-events:none}
-.fence-me,.fence-acc{position:absolute;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;transition:left var(--t-slow) var(--ease),top var(--t-slow) var(--ease)}
-.fence-acc{background:rgba(26,115,232,.14);border:1px solid rgba(26,115,232,.3)}
-.fence-me{width:18px;height:18px;background:#1A73E8;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);animation:fence-ping 2s var(--ease) infinite}
-@keyframes fence-ping{0%{box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 0 0 rgba(26,115,232,.45)}70%{box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 0 14px rgba(26,115,232,0)}100%{box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 0 0 rgba(26,115,232,0)}}
 .fence-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 2px}
 .fence-status{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:4px 12px;border-radius:999px;background:var(--sunken);color:var(--ink-2);font-size:13px;font-weight:650;line-height:1.25}
 .fence-status.in{background:#E3F4E8;color:#14612F}
@@ -614,13 +608,17 @@ body:has(.login){background:radial-gradient(640px 520px at 88% -4%,rgba(242,190,
 .combo-txt b{font-size:15px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .combo-txt small{font-size:13px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint.center{text-align:center}
-/* keyless fallback: tap to explore (the overlay hides while the map is moved), Re-centre restores it */
-.fence iframe{pointer-events:none}
-.fence-shield{position:absolute;inset:0;z-index:2;display:flex;align-items:flex-end;justify-content:center;padding:10px;border:0;background:transparent;cursor:pointer}
-.fence-shield span{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(35,38,44,.78);color:#fff;font-size:12.5px;font-weight:600;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-.fence.exploring iframe{pointer-events:auto}
-.fence.exploring .fence-shield,.fence.exploring .fence-ring,.fence.exploring #fenceMe{display:none}
-.fence.live{height:280px}
 .fence-foot{flex-wrap:wrap}
 .fence-foot .btn{margin-left:auto}
 .fence-foot .btn+.btn{margin-left:0}
+
+/* OpenStreetMap (Leaflet) fence map */
+.fence{z-index:0;height:260px}
+.fence .leaflet-control-attribution{font-size:10px}
+.leaflet-container{font:inherit;background:var(--sunken)}
+.school-pin{display:grid!important;place-items:center;width:32px;height:32px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);background:var(--ink);color:var(--brand);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.school-pin svg{transform:rotate(45deg)}
+.fence-me{filter:drop-shadow(0 1px 3px rgba(0,0,0,.35))}
+.fence-off{margin:0;padding:20px;color:var(--muted);font-size:14px}
+.fence .leaflet-bar{border:1px solid var(--hairline);border-radius:12px;overflow:hidden;box-shadow:var(--sh-1)}
+.fence .leaflet-bar a{width:36px;height:36px;line-height:36px;color:var(--ink)}

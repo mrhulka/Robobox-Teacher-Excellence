@@ -58,7 +58,6 @@ interface Leader { name: string; title: string; top: boolean; profiles?: boolean
 
 interface AppConfig {
   geofenceMeters: number;
-  googleMapsKey: string;
   expectedStart: string;
   opsSlaDays: number;
   workDays: number[];
