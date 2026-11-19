@@ -415,3 +415,19 @@ button.user-chip:disabled{cursor:default}
 .kv{display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;margin:0;font-size:14px}
 .kv dt{color:var(--muted)}.kv dd{margin:0;font-weight:600;min-width:0;overflow-wrap:anywhere}
 @media (max-width:420px){.segtab .i{display:none}.segtab{padding:0 8px;font-size:13.5px}}
+.avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+.selfie{display:flex;align-items:center;gap:16px;margin:6px 0 2px}
+.selfie .hint{margin:8px 0 0}
+.selfie-pv{display:grid;place-items:center;width:88px;height:88px;border-radius:50%;background:var(--sunken);color:var(--muted);overflow:hidden;flex:none}
+.selfie-pv img{width:100%;height:100%;object-fit:cover}
+.selfie-lg{width:96px;height:96px;border-radius:50%;object-fit:cover;display:block;margin-bottom:14px}
+/* Lesson plan progress */
+.prog+.prog{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-2)}
+.prog-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px;font-size:14px}
+.prog-top span{color:var(--muted);font-variant-numeric:tabular-nums}
+/* Google Maps */
+.map{display:block;width:100%;height:220px;border:0;border-radius:12px;margin:10px 0;background:var(--sunken)}
+details.loc>summary{list-style:none;cursor:pointer}details.loc>summary::-webkit-details-marker{display:none}
+.loc-body{padding:0 16px 16px}
+.link-sum{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:14px;font-weight:650;color:var(--brand-ink)}
+.loc-body .btn-row{display:flex;flex-wrap:wrap;gap:8px}.loc-body .btn-row .btn{flex:1 1 auto;min-width:0;white-space:normal}

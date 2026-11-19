@@ -122,5 +122,25 @@
     ok([0, 25, 26, 27, 701, 702].every((i) => colIdx(col(i) + '7') === i), 'cell ref → column index round-trips colName');
     const xDate = (n) => new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000).toISOString().slice(0, 10);
     ok(xDate(46345) === '2026-11-19' && xDate(45658) === '2025-01-01', 'Excel date serials');
+    // Google Maps link → coordinates (kept in sync with app.ts parseLatLng): the pin beats the map centre.
+    const ll = (raw) => {
+        let s = raw.trim();
+        try {
+            s = decodeURIComponent(s);
+        }
+        catch (e) { /* keep raw */ }
+        const n = '(-?\\d{1,3}\\.\\d+)';
+        const m = s.match(new RegExp(`!3d${n}!4d${n}`)) || s.match(new RegExp(`[?&](?:q|query|ll|destination|center)=${n},\\s*${n}`))
+            || s.match(new RegExp(`@${n},${n}`)) || s.match(new RegExp(`^${n}\\s*,\\s*${n}$`));
+        if (!m)
+            return null;
+        const lat = Number(m[1]), lng = Number(m[2]);
+        return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? `${lat},${lng}` : null;
+    };
+    ok(ll('https://www.google.com/maps/place/School/@19.0700,72.8000,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x0!8m2!3d19.0761!4d72.8778!16s') === '19.0761,72.8778', 'place pin wins over map centre');
+    ok(ll('https://www.google.com/maps/@19.2183,73.0868,18z') === '19.2183,73.0868', 'map centre');
+    ok(ll('https://maps.google.com/?q=19.2183%2C73.0868') === '19.2183,73.0868', 'q= with encoded comma');
+    ok(ll(' 19.2183, 73.0868 ') === '19.2183,73.0868', 'plain coordinates');
+    ok(ll('https://maps.app.goo.gl/6hMX61Bba2fiLHvm6') === null && ll('99.5, 10.1') === null, 'short links and bad ranges rejected');
     console.log('selfcheck OK');
 })();

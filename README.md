@@ -43,9 +43,10 @@ Leadership names, who is "top" and who sees profiles (`profiles: true`, Parth) l
 
 ## My profile & birthdays
 Every user can open **My profile** by tapping their name in the top bar. For **teachers and coordinators it is
-compulsory**: until full name, education, birthday and location are saved, the app shows only the profile form.
+compulsory**: until a **selfie**, full name, education, birthday and location are saved, the app shows only the profile form.
 Education and location are prefilled for the 37 teachers listed in `TEACHERS.xlsx` (training sheet) — they just
-check and add their birthday. Coordinators see their teachers' upcoming birthdays on *My teachers*, as pink dots
+check, add their birthday and take a selfie. The selfie is cropped and shrunk on the phone (320 px JPEG,
+~20 KB) and shows as their avatar for coordinators and Parth. Coordinators see their teachers' upcoming birthdays on *My teachers*, as pink dots
 on the *Calendar*, and each teacher's profile on their detail page. Parth sees birthdays on the Overview, and
 *Teachers → Profiles* holds the whole repository (completion count, missing profiles, birthday calendar for the
 year ahead) with an `.xlsx` download.
@@ -64,8 +65,10 @@ rows directly. Columns: `Date or week · Batch or grade · Topic · Activity`; a
 replaces that session, so re-uploading the edited current-plans file updates in place. The `.xlsx` reader is built
 in (no library; first sheet only; dates typed in Excel are understood). A batch name inherits
 that batch's teachers and trainer; a grade applies to everyone. Teachers mark each session *Done /
-Partly done / Not done* by Saturday; a reason is required for anything not done and for any late
-update. Coordinators and leadership see who updated; a week counts only if its plan was published
+Partly done / Not done* by Saturday; a reason is required only for *Partly done* or *Not done* (late updates
+are still flagged "Updated late"). **Progress bars** (done / partly / not done / not updated) for the week and
+the month are shown to the teacher (Lessons), the coordinator (My teachers + each teacher's page) and on
+*Teachers → Lesson plans* for leadership (all teachers + per coordinator). Coordinators and leadership see who updated; a week counts only if its plan was published
 before that week's Saturday.
 
 ## Component requests
@@ -91,11 +94,15 @@ New updates and library items show a count bubble on the Updates tab until it is
 All downloads are real Excel `.xlsx` files (bold, frozen header; numbers stored as numbers), written
 in `downloadXLSX()` with no library — a single-sheet SpreadsheetML workbook in an uncompressed zip.
 
-## Geofence (100 m)
-Uses the browser's native Geolocation. A school's geofence centre is **captured on-site**
-the first time a teacher/coordinator acts there ("set to my current location") — this avoids
-resolving the Google Maps short-links in the sheet and is more accurate. Login/visit is
-allowed only within `CONFIG.geofenceMeters` (100 m).
+## Geofence (100 m) + Google Maps
+Check-in/out and coordinator visits read the phone's GPS (browser Geolocation) and are allowed only within
+`CONFIG.geofenceMeters` (100 m) of the school's pin. Each school's pin is set by its coordinator (*Visit →
+School locations*) or by Parth/Manish (*Coordinators → School locations*): paste the school's **Google Maps
+link** (or `lat, lng`) — `parseLatLng()` reads the place pin from it — or stand at the gate and tap *Use my
+current location*. Each school shows an embedded Google Map (no API key needed) and teachers see their school
+on the map with directions. **Teachers can't set a pin**: check-in at a school without one is refused.
+`maps.app.goo.gl` short links (as in the school sheet) can't be read inside a browser; open the link and copy
+the full address-bar link instead.
 
 ## Data
 Seeded from the uploaded School–Teacher sheet (29 schools, 61 teachers, 3 coordinators) and

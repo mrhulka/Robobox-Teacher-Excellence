@@ -39,7 +39,7 @@ interface SchoolEvent { id?: string; school: string; teacher: string; type: stri
 interface LessonPlan { id?: string; week: string; grade: string; topic: string; activity: string; addedAt?: string; date?: string; trainer?: string; teachers?: string[]; }
 interface PlanUpdate { id?: string; teacher: string; week: string; grade: string; status: 'Done' | 'Partly done' | 'Not done' | 'Not my class'; reason: string; at: string; late: boolean; }
 // My profile — compulsory for teachers and coordinators (keyed by role + login name).
-interface Profile { id?: string; role: Role; name: string; fullName: string; education: string; birthday: string; location: string; updatedAt: string; }
+interface Profile { id?: string; role: Role; name: string; fullName: string; education: string; birthday: string; location: string; updatedAt: string; selfie?: string; } // selfie = 320 px JPEG data URL
 interface VisitPlan { id?: string; mod: string; school: string; date: string; note?: string; teacher?: string; status: 'Planned' | 'Done'; }
 
 // Every collection the store holds. Keys double as STORE.get() arguments.

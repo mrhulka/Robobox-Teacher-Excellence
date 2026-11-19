@@ -58,6 +58,7 @@ const ICONS = {
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
     pinI: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
     trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+    camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
     gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
     target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
 };
@@ -224,6 +225,9 @@ function getPos() {
 // One GPS read. If the school has no geofence yet, set it to the measured point
 // (on-site, one-time). Returns {ok,dist} or null if aborted.
 async function atSchool(school) {
+    var _a;
+    if (school.lat == null && ((_a = SESSION.get()) === null || _a === void 0 ? void 0 : _a.role) === 'teacher' && !DEMO.on)
+        throw new Error(`${school.name}'s location isn't set yet — ask your coordinator to set it from Google Maps.`);
     const pos = await getPos();
     if (school.lat == null) {
         if (!DEMO.on && !confirm(`${school.name} has no geofence yet. Set it to your current location now?`))
@@ -400,7 +404,7 @@ function openTeacher(name) {
 function entered() { var _a; window.scrollTo(0, 0); (_a = document.getElementById('main')) === null || _a === void 0 ? void 0 : _a.classList.add('enter'); }
 function closeTeacher() { SEL = null; render(); }
 function render() {
-    var _a;
+    var _a, _b;
     const u = SESSION.get();
     const app = $('app');
     if (!u) {
@@ -408,24 +412,24 @@ function render() {
         return;
     }
     // Teachers and coordinators must complete My profile before anything else.
-    const gate = mustProfile(u) && !profileOf(u.role, u.name);
+    const gate = mustProfile(u) && !((_a = profileOf(u.role, u.name)) === null || _a === void 0 ? void 0 : _a.selfie);
     const tabs = gate ? [] : tabsFor(u);
     const active = gate ? '' : tabs.some((t) => t.id === TAB[u.role]) ? TAB[u.role] : tabs[0].id;
     // Count bubble on Updates for new HR posts and library items; cleared once Updates is opened.
     const unread = active === 'upd' ? 0 : unreadUpdates(u);
     const dot = (t) => t.id === 'upd' && unread ? `<span class="tab-badge" aria-hidden="true">${unread > 9 ? '9+' : unread}</span><span class="sr-only">, ${unread} new</span>` : '';
-    const roleLabel = { mod: 'Coordinator', teacher: 'Teacher', ops: 'Operations team', hr: 'Human resources' }[u.role] || ((_a = leaderOf(u.name)) === null || _a === void 0 ? void 0 : _a.title) || 'Leadership';
+    const roleLabel = { mod: 'Coordinator', teacher: 'Teacher', ops: 'Operations team', hr: 'Human resources' }[u.role] || ((_b = leaderOf(u.name)) === null || _b === void 0 ? void 0 : _b.title) || 'Leadership';
     app.innerHTML = `
     <header class="topbar">
       <img class="logo-img" src="assets/logo-mark.webp" width="75" height="28" alt="The Robobox">
       <nav class="topnav" aria-label="Main">${tabs.map((t) => `<button class="${t.id === active ? 'on' : ''}" ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 18)}<span>${t.label}</span>${dot(t)}</button>`).join('')}</nav>
-      <button class="user-chip" onclick="openProfile()" ${gate ? 'disabled' : ''} aria-label="My profile — ${esc(u.name)}, ${esc(roleLabel)}"><span class="avatar sm" aria-hidden="true">${initials(u.name)}</span><span class="who"><b>${esc(u.name)}</b><small>${esc(roleLabel)}</small></span></button>
+      <button class="user-chip" onclick="openProfile()" ${gate ? 'disabled' : ''} aria-label="My profile — ${esc(u.name)}, ${esc(roleLabel)}">${face(u.role, u.name, 'avatar sm')}<span class="who"><b>${esc(u.name)}</b><small>${esc(roleLabel)}</small></span></button>
       <button class="icon-btn" onclick="logout()" aria-label="Sign out" title="Sign out">${ic('logout')}</button>
     </header>
     <main class="wrap" id="main">${gate || PROF ? profileView(u, gate) : VIEWS[u.role + ':' + active](u)}</main>
     ${gate ? '' : `<nav class="tabbar" aria-label="Main">${tabs.map((t) => `<button class="tab${t.id === active ? ' on' : ''}${t.short ? ' s-' + t.at : ''}" ${t.short ? `aria-label="${t.label}"` : ''} ${t.id === active ? 'aria-current="page"' : ''} onclick="go('${t.id}')">${ic(t.icon, 22)}<span class="lbl">${t.label}</span>${t.short ? `<span class="lbl-s" aria-hidden="true">${t.short}</span>` : ''}${dot(t)}</button>`).join('')}</nav>`}`;
 }
-function logout() { SESSION.clear(); Object.keys(TAB).forEach((k) => delete TAB[k]); SEL = null; PROF = false; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t)
+function logout() { SESSION.clear(); Object.keys(TAB).forEach((k) => delete TAB[k]); SEL = null; PROF = false; PF_SELFIE = ''; VISIT = null; UPD = 'official'; LW = 0; LPD = {}; ATS = 'status'; ATM = 0; CTS = 'teachers'; const t = document.getElementById('toast'); if (t)
     t.innerHTML = ''; render(); }
 /* ================= LOGIN ================= */
 let LOGIN = { role: null };
@@ -550,6 +554,7 @@ function tHome(u) {
       ${open ? `<button class="btn dark block" onclick="punch('out')">${ic('logout', 18)}Check out</button>`
             : `<button class="btn block" onclick="punch('in')">${ic('login', 18)}Check in</button>`}
       ${schools.length > 1 ? '<p class="hint">You can check in at one school and check out at another.</p>' : ''}
+      ${schools.some((s) => s.lat != null) ? `<details class="loc"><summary class="link-sum">${ic('pin', 16)}School on the map</summary>${schools.filter((s) => s.lat != null).map((s) => `<p class="hint"><b>${esc(s.name)}</b> · <a href="${mapsHref(s)}" target="_blank" rel="noopener">Directions</a></p>${mapEmbed(s)}`).join('')}</details>` : ''}
     </section>
     <div class="kpis">
       ${kpi('Avg delay · week', avgLateWindow(u.name, 'week') + ' min', 'clock')}
@@ -1093,7 +1098,7 @@ function setPlanState(btn, i, st) {
     LPD[LPLANS[i].grade] = st;
     pickIn(btn);
     setErr('lpReasonErr', '');
-    const req = todayStr() > weekDue(LWK) || Object.values(LPD).some((x) => x === 'Partly done' || x === 'Not done');
+    const req = Object.values(LPD).some((x) => x === 'Partly done' || x === 'Not done');
     (_a = document.getElementById('lpReasonReq')) === null || _a === void 0 ? void 0 : _a.toggleAttribute('hidden', !req);
 }
 function tLessons(u) {
@@ -1108,13 +1113,14 @@ function tLessons(u) {
         LPD[x.grade] = x.status; });
     const overdue = overdueWeeks(u.name).filter((w) => w !== wk);
     const late = todayStr() > weekDue(wk);
-    const reasonReq = late || Object.values(LPD).some((x) => x === 'Partly done' || x === 'Not done');
+    const reasonReq = Object.values(LPD).some((x) => x === 'Partly done' || x === 'Not done');
     const when = LW === 0 ? 'This week' : LW === -1 ? 'Last week' : LW === 1 ? 'Next week' : `Week of ${fmtD(wk)}`;
     return pageHead('Lesson plans', 'Your weekly plan from Robobox. Update your progress by Saturday.') +
-        (overdue.length ? `<button class="notice err as-btn" onclick="goWeek('${overdue[0]}')">${ic('alert', 18)}<span><b>${plural(overdue.length, 'week')} not updated</b> — week of ${fmtD(overdue[0])}. Tap to update with a reason.</span></button>` : '') +
+        (overdue.length ? `<button class="notice err as-btn" onclick="goWeek('${overdue[0]}')">${ic('alert', 18)}<span><b>${plural(overdue.length, 'week')} not updated</b> — week of ${fmtD(overdue[0])}. Tap to update.</span></button>` : '') +
         `<section class="card week-nav"><button class="icon-btn" aria-label="Previous week" onclick="setLW(${LW - 1})">${ic('chevL')}</button>
       <div><b>${when}</b><small>${fmtD(wk)} – ${fmtD(weekDue(wk))}</small></div>
       <button class="icon-btn" aria-label="Next week" onclick="setLW(${LW + 1})">${ic('chevR')}</button></section>
+    ${progressCard([u.name], LW === 0 ? todayStr() : wk, 'Your progress')}
     ${plans.length ? plans.map((p) => {
             const up = ups.find((x) => x.grade === p.grade);
             return `<article class="card lesson">
@@ -1128,7 +1134,7 @@ function tLessons(u) {
         ${plans.map((p, i) => `<div class="q"><div class="qt"><b>${esc(p.grade)}</b> · ${esc(p.topic)}</div>
           <div class="rate opts" role="group" aria-label="${esc(p.grade)} progress">${PLAN_STATES.filter((st) => !(p.teachers && st === 'Not my class')).map((st) => `<button class="${st === 'Done' ? 'yes' : st === 'Not done' ? 'no' : ''}${LPD[p.grade] === st ? ' on' : ''}" onclick="setPlanState(this,${i},'${st}')">${st}</button>`).join('')}</div></div>`).join('')}
         <label class="field-l" for="lpReason">Reason <span class="req-tag" id="lpReasonReq"${reasonReq ? '' : ' hidden'}>Required</span></label>
-        <textarea id="lpReason" rows="3" placeholder="${late ? 'This update is after Saturday — say why it is late, and why anything was not done' : 'Needed if anything was partly done or not done'}">${esc(((_a = ups[0]) === null || _a === void 0 ? void 0 : _a.reason) || '')}</textarea>
+        <textarea id="lpReason" rows="3" placeholder="Only needed if something was partly done or not done">${esc(((_a = ups[0]) === null || _a === void 0 ? void 0 : _a.reason) || '')}</textarea>
         <p class="err" id="lpReasonErr" role="alert"></p>
         <button class="btn block" onclick="submitPlanUpdate()">${ic('check', 18)}${ups.length ? 'Update progress' : 'Submit weekly update'}</button>
         <p class="hint">${ups.length ? `Last updated ${fmtD(ups[0].at)}${ups[0].late ? ' — after the deadline' : ''}.` : `Due ${fmtLong(weekDue(wk))}.`}</p>
@@ -1164,8 +1170,8 @@ function submitPlanUpdate() {
     const prev = planUpdatesOf(u.name, wk);
     const late = !prev.some((x) => !x.late) && todayStr() > weekDue(wk); // editing an on-time update stays on time
     const reason = $('lpReason').value.trim();
-    if ((late || LPLANS.some((p) => LPD[p.grade] === 'Partly done' || LPD[p.grade] === 'Not done')) && reason.length < 5) {
-        setErr('lpReasonErr', late ? 'This update is late — add the reason.' : 'Add a reason for what was not done.');
+    if (LPLANS.some((p) => LPD[p.grade] === 'Partly done' || LPD[p.grade] === 'Not done') && reason.length < 5) {
+        setErr('lpReasonErr', 'Add a reason for what was partly done or not done.');
         $('lpReason').focus();
         return;
     }
@@ -1207,7 +1213,9 @@ function setCts(k) { CTS = k; PENDING_DEL = ''; render(); }
 function plansAdmin(u) {
     const cur = weekOf(todayStr());
     const weeks = [...new Set(STORE.get('lessons').map((p) => p.week))].sort().reverse();
-    return complianceCard(STORE.get('teachers').map((t) => t.name)) +
+    const all = STORE.get('teachers').map((t) => t.name);
+    return complianceCard(all) + progressCard(all, todayStr(), 'Lesson plan progress · all teachers') +
+        STORE.get('moderators').map((m) => progressCard(teachersOfMod(m).map((t) => t.name), todayStr(), `${esc(m)}'s teachers`)).join('') +
         (isTop(u) ? `<section class="card"><h3 class="card-title">Load lesson plans</h3>
       <p class="hint" style="margin-top:0">Download the blank template (or the current plans), fill it in Excel and upload it — or copy the rows <b>Date or week · Batch or grade · Topic · Activity</b> and paste them below. Week is a number (Week 1 = ${fmtD(weekOf(CONFIG.ayStart))}) or any date in that week — a date becomes the session date. Use a batch name (e.g. <b>Batch 01</b>) to schedule that batch's teachers, or a grade for everyone. A plan for the same week and group is replaced.</p>
       <div class="btn-row"><button class="btn ghost sm" onclick="planTemplate()">${ic('download', 16)}Blank template</button><button class="btn ghost sm" onclick="exportPlans()">${ic('download', 16)}Current plans</button>
@@ -1280,17 +1288,52 @@ async function uploadPlans(input) {
 const mustProfile = (u) => u.role === 'teacher' || u.role === 'mod'; // can't use the app until saved
 const canSeeProfiles = (u) => { var _a; return u.role === 'ceo' && !!((_a = leaderOf(u.name)) === null || _a === void 0 ? void 0 : _a.profiles); }; // Parth
 const profileOf = (role, name) => STORE.get('profiles').find((p) => p.role === role && p.name.toLowerCase() === name.toLowerCase());
+// Profile photo where there is one, initials otherwise.
+const face = (role, name, cls = 'avatar') => {
+    const p = profileOf(role, name);
+    return `<span class="${cls}" aria-hidden="true">${(p === null || p === void 0 ? void 0 : p.selfie) ? `<img src="${p.selfie}" alt="">` : initials(name)}</span>`;
+};
 const titleCase = (s) => s.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 let PROF = false;
-function openProfile() { PROF = true; render(); entered(); }
-function closeProfile() { PROF = false; render(); entered(); }
+let PF_SELFIE = ''; // selfie picked but not yet saved
+function openProfile() { PROF = true; PF_SELFIE = ''; render(); entered(); }
+function closeProfile() { PROF = false; PF_SELFIE = ''; render(); entered(); }
+// Square-crops and shrinks the photo on the device (~20 KB) so it fits in storage.
+// ponytail: stored inline in the profile; move to object storage with the backend.
+async function pickSelfie(input) {
+    var _a;
+    const f = (_a = input.files) === null || _a === void 0 ? void 0 : _a[0];
+    input.value = '';
+    if (!f)
+        return;
+    try {
+        const img = await createImageBitmap(f);
+        const side = Math.min(img.width, img.height), S = 320;
+        const c = document.createElement('canvas');
+        c.width = c.height = S;
+        c.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, S, S);
+        PF_SELFIE = c.toDataURL('image/jpeg', 0.8);
+        document.getElementById('pfPreview').innerHTML = `<img src="${PF_SELFIE}" alt="Your selfie">`;
+        setErr('pfPhotoErr', '');
+    }
+    catch (e) {
+        setErr('pfPhotoErr', 'Couldn’t read that photo — try again.');
+    }
+}
 function profileView(u, gate) {
     const p = profileOf(u.role, u.name);
     const h = (u.role === 'teacher' && SEED.profileHints[u.name]) || {};
+    if (!PF_SELFIE)
+        PF_SELFIE = (p === null || p === void 0 ? void 0 : p.selfie) || '';
     const field = (id, label, val, extra) => `<label class="field-l" for="${id}">${label}</label><input id="${id}" value="${esc(val)}" ${extra}><p class="err" id="${id}Err" role="alert"></p>`;
     return (gate ? '' : backLink('Back', 'closeProfile()')) +
         pageHead('My profile', gate ? `Welcome, ${esc(titleCase(u.name))}. Complete your profile to start using the portal — it takes a minute.` : 'Keep your details up to date.') +
         `<section class="card">
+      <span class="field-l">Selfie</span>
+      <div class="selfie"><span class="selfie-pv" id="pfPreview">${PF_SELFIE ? `<img src="${PF_SELFIE}" alt="Your selfie">` : ic('camera', 32)}</span>
+        <div><button class="btn ghost sm" onclick="$('pfPhoto').click()">${ic('camera', 16)}${PF_SELFIE ? 'Retake selfie' : 'Take a selfie'}</button>
+          <p class="hint">A clear photo of your face, for your coordinator and Robobox.</p></div></div>
+      <input type="file" id="pfPhoto" accept="image/*" capture="user" hidden onchange="pickSelfie(this)"><p class="err" id="pfPhotoErr" role="alert"></p>
       ${field('pfName', 'Full name', (p === null || p === void 0 ? void 0 : p.fullName) || titleCase(u.name), 'autocomplete="name" placeholder="First and last name"')}
       ${field('pfEdu', 'Education', (p === null || p === void 0 ? void 0 : p.education) || h.education || '', 'placeholder="e.g. B.Tech, Electronics"')}
       ${field('pfBday', 'Birthday', (p === null || p === void 0 ? void 0 : p.birthday) || '', `type="date" max="${todayStr()}"`)}
@@ -1302,9 +1345,10 @@ function profileView(u, gate) {
 function saveProfile() {
     const u = SESSION.get();
     const val = (id) => $(id).value.trim().replace(/\s+/g, ' ');
-    const f = { fullName: val('pfName'), education: val('pfEdu'), birthday: $('pfBday').value, location: val('pfLoc') };
+    const f = { fullName: val('pfName'), education: val('pfEdu'), birthday: $('pfBday').value, location: val('pfLoc'), selfie: PF_SELFIE };
     const age = f.birthday ? dayDiff(f.birthday, todayStr()) / 365.25 : 0;
     const errs = [
+        ['pfPhoto', f.selfie ? '' : 'Take a selfie — it’s required.'],
         ['pfName', f.fullName.length >= 2 ? '' : 'Enter your full name.'],
         ['pfEdu', f.education ? '' : 'Enter your highest qualification.'],
         ['pfBday', !f.birthday ? 'Enter your date of birth.' : age < 16 || age > 80 ? 'Check the year — that date gives an age outside 16–80.' : ''],
@@ -1323,7 +1367,8 @@ function saveProfile() {
     else
         STORE.add('profiles', { role: u.role, name: u.name, ...rec });
     PROF = false;
-    flash('ok', p ? 'Profile updated.' : 'Profile saved — welcome!');
+    PF_SELFIE = '';
+    flash('ok', (p === null || p === void 0 ? void 0 : p.selfie) ? 'Profile updated.' : 'Profile saved — welcome!');
     render();
     entered();
 }
@@ -1356,7 +1401,7 @@ function birthdayCard(u, days) {
 }
 function profileBlock(name) {
     const p = profileOf('teacher', name);
-    return `<h2 class="section-title">Profile</h2><section class="card">${p ? `<dl class="kv">
+    return `<h2 class="section-title">Profile</h2><section class="card">${p ? `${p.selfie ? `<img class="selfie-lg" src="${p.selfie}" alt="Selfie of ${esc(p.fullName)}">` : ''}<dl class="kv">
       <dt>Full name</dt><dd>${esc(p.fullName)}</dd><dt>Education</dt><dd>${esc(p.education)}</dd>
       <dt>Birthday</dt><dd>${parseD(p.birthday).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}</dd><dt>Location</dt><dd>${esc(p.location)}</dd></dl>`
         : `<p class="hint" style="margin:0">Profile not completed yet — ${esc(name)} will be asked to fill it in at their next sign-in.</p>`}</section>`;
@@ -1375,7 +1420,7 @@ function profilesAdmin() {
     <div class="card list" id="pfList">${people.map(([r, n]) => {
         var _a;
         const p = profileOf(r, n);
-        return `<div class="row-item" data-q="${esc([n, p === null || p === void 0 ? void 0 : p.fullName, p === null || p === void 0 ? void 0 : p.education, p === null || p === void 0 ? void 0 : p.location].join(' ').toLowerCase())}"><span class="avatar">${initials((p === null || p === void 0 ? void 0 : p.fullName) || n)}</span>
+        return `<div class="row-item" data-q="${esc([n, p === null || p === void 0 ? void 0 : p.fullName, p === null || p === void 0 ? void 0 : p.education, p === null || p === void 0 ? void 0 : p.location].join(' ').toLowerCase())}">${face(r, n)}
         <span class="row-main"><b>${esc((p === null || p === void 0 ? void 0 : p.fullName) || n)}</b><small>${r === 'mod' ? 'Coordinator' : 'Teacher · ' + esc(((_a = STORE.teacher(n)) === null || _a === void 0 ? void 0 : _a.mod) || '')}${p ? ` · ${esc(p.education)} · ${esc(p.location)} · born ${fmtD(p.birthday)}` : ''}</small></span>
         <span class="row-end">${p ? '' : badge('Missing', 'red')}</span></div>`;
     }).join('')}</div>`;
@@ -1432,6 +1477,93 @@ function xlsxRows(files) {
         });
         return Array.from(row, (x) => x || '');
     });
+}
+/* ================= SCHOOL LOCATIONS (Google Maps → geofence centre) ================= */
+// Coordinates from a full Google Maps link or a plain "lat, lng". The place pin (!3d…!4d…) wins over the map centre (@lat,lng).
+function parseLatLng(raw) {
+    let s = raw.trim();
+    try {
+        s = decodeURIComponent(s);
+    }
+    catch (e) { /* keep raw */ }
+    const n = '(-?\\d{1,3}\\.\\d+)';
+    const m = s.match(new RegExp(`!3d${n}!4d${n}`)) || s.match(new RegExp(`[?&](?:q|query|ll|destination|center)=${n},\\s*${n}`))
+        || s.match(new RegExp(`@${n},${n}`)) || s.match(new RegExp(`^${n}\\s*,\\s*${n}$`));
+    if (!m)
+        return null;
+    const lat = Number(m[1]), lng = Number(m[2]);
+    return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+}
+// Google Maps embed needs no API key. Inside a closed <details>, loading="lazy" means it loads only when opened.
+const mapEmbed = (s) => `<iframe class="map" loading="lazy" title="Map of ${esc(s.name)}" src="https://maps.google.com/maps?q=${s.lat},${s.lng}&z=17&output=embed"></iframe>`;
+const mapsHref = (s) => `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
+function schoolLocations(schools) {
+    return `<div class="card list">${schools.map((s) => `<details class="loc"><summary class="row-item tap"><span class="row-ic">${ic('pin', 18)}</span>
+      <span class="row-main"><b>${esc(s.name)}</b><small>${s.lat != null ? `${s.lat.toFixed(5)}, ${s.lng.toFixed(5)}` : 'Geofence not set — teachers cannot check in'}</small></span>
+      <span class="row-end">${s.lat != null ? badge('Set', 'green') : badge('Not set', 'red')}</span></summary>
+      <div class="loc-body">${s.lat != null ? mapEmbed(s) + `<a class="btn ghost sm" href="${mapsHref(s)}" target="_blank" rel="noopener">${ic('link', 16)}Open in Google Maps</a>` : ''}
+        ${s.mapLink ? `<p class="hint">Link from the school sheet: <a href="${esc(s.mapLink)}" target="_blank" rel="noopener">open it</a>, then copy the full address-bar link (or long-press the pin to copy its coordinates) and paste below.</p>` : ''}
+        <label class="field-l" for="loc_${s.id}">Google Maps link or coordinates</label><input id="loc_${s.id}" placeholder="https://www.google.com/maps/place/… or 19.0760, 72.8777">
+        <p class="err" id="loc_${s.id}Err" role="alert"></p>
+        <div class="btn-row"><button class="btn sm" onclick="setSchoolLink('${s.id}')">${ic('check', 16)}Save location</button>
+          <button class="btn ghost sm" onclick="setSchoolHere('${s.id}')">${ic('pin', 16)}Use my current location</button></div></div></details>`).join('')}</div>`;
+}
+function setSchoolLink(id) {
+    const v = $('loc_' + id).value;
+    const p = parseLatLng(v);
+    if (!p) {
+        setErr(`loc_${id}Err`, /goo\.gl|maps\.app/.test(v) ? 'Short links can’t be read here — open it in Google Maps and copy the full link from the address bar.' : 'Paste a Google Maps link with a pin, or coordinates like 19.0760, 72.8777.');
+        return;
+    }
+    STORE.setSchoolLoc(id, p.lat, p.lng);
+    flash('ok', `${schoolName(id)}: geofence set (${CONFIG.geofenceMeters} m).`);
+    render();
+}
+async function setSchoolHere(id) {
+    try {
+        const p = await getPos();
+        STORE.setSchoolLoc(id, p.lat, p.lng);
+        flash('ok', `${schoolName(id)}: geofence set to where you are (±${Math.round(p.acc)} m).`);
+        render();
+    }
+    catch (e) {
+        flash('err', e.message);
+    }
+}
+// Sessions for these teachers in [from, to] (by session date, or week Monday), by their latest status.
+function planProgress(names, from, to) {
+    const r = { done: 0, partly: 0, not: 0, pending: 0 };
+    names.forEach((n) => plansFor(n).forEach((p) => {
+        var _a;
+        const d = p.date || p.week;
+        if (d < from || d > to)
+            return;
+        const st = (_a = planUpdatesOf(n, p.week).find((x) => x.grade === p.grade)) === null || _a === void 0 ? void 0 : _a.status;
+        if (st === 'Not my class')
+            return;
+        r[st === 'Done' ? 'done' : st === 'Partly done' ? 'partly' : st === 'Not done' ? 'not' : 'pending']++;
+    }));
+    return r;
+}
+function progBar(label, p) {
+    const t = p.done + p.partly + p.not + p.pending;
+    if (!t)
+        return '';
+    const seg = (k, v, l) => v ? `<span class="seg-${k}" style="width:${(v / t) * 100}%" title="${l}: ${v}"></span>` : '';
+    return `<div class="prog"><div class="prog-top"><b>${label}</b><span>${Math.round((p.done / t) * 100)}% done</span></div>
+    <div class="stack" role="img" aria-label="${label}: ${p.done} done, ${p.partly} partly done, ${p.not} not done, ${p.pending} not updated">${seg('green', p.done, 'Done')}${seg('amber', p.partly, 'Partly done')}${seg('red', p.not, 'Not done')}${seg('none', p.pending, 'Not updated')}</div>
+    <div class="legend tight"><span><i class="seg-green"></i><b>${p.done}</b>Done</span><span><i class="seg-amber"></i><b>${p.partly}</b>Partly</span><span><i class="seg-red"></i><b>${p.not}</b>Not done</span><span><i class="seg-none"></i><b>${p.pending}</b>Not updated</span></div></div>`;
+}
+// Week bar + calendar-month bar around `day` (defaults to today). Empty when there are no sessions.
+function progressCard(names, day = todayStr(), title = 'Lesson plan progress') {
+    const wk = weekOf(day);
+    // No sessions this month yet (e.g. a gap in the schedule) → show the latest month that had any.
+    const dates = names.flatMap((n) => plansFor(n).map((p) => p.date || p.week)).sort();
+    const mday = dates.some((d) => d.slice(0, 7) === day.slice(0, 7)) ? day : dates.filter((d) => d <= day).pop() || day;
+    const m0 = mday.slice(0, 8) + '01';
+    const m1 = isoLocal(new Date(Number(mday.slice(0, 4)), Number(mday.slice(5, 7)), 0));
+    const bars = progBar(`Week of ${fmtD(wk)}`, planProgress(names, wk, addDays(wk, 6))) + progBar(parseD(mday).toLocaleDateString([], { month: 'long', year: 'numeric' }), planProgress(names, m0, m1));
+    return bars ? `<section class="card"><h3 class="card-title">${title}</h3>${bars}</section>` : '';
 }
 /* ================= OPERATIONS: component request fulfilment ================= */
 // Fulfilment KPI. ponytail: SLA = CONFIG.opsSlaDays calendar days from request to fulfilment; tune with Robobox.
@@ -1528,11 +1660,11 @@ function mTeachers(u) {
       ${pending.length ? `<p class="hint">${pending.length} awaiting approval from Parth or Manish: ${pending.map((l) => esc(l.teacher)).join(', ')}.</p>` : ''}
     </section>` : '';
     return pageHead('My teachers', `${ts.length} teachers · ${schoolsOfMod(u.name).length} schools`, `<button class="btn ghost sm" onclick="reportCoordTeachers('${esc(u.name)}')">${ic('download', 16)}Report</button>`) +
-        leaveCard + complianceCard(names) + eventsCard(u, 'School events · next 2 weeks') + birthdayCard(u, 30) + searchBox('tList', 'Search teachers') +
+        leaveCard + complianceCard(names) + progressCard(names) + eventsCard(u, 'School events · next 2 weeks') + birthdayCard(u, 30) + searchBox('tList', 'Search teachers') +
         `<div class="card list" id="tList">${ts.map((t) => {
             const rag = teacherRag(t.name);
             const lv = leaveOn(t.name);
-            return `<button class="row-item tap" data-q="${esc(t.name.toLowerCase())}" onclick="openTeacher('${esc(t.name)}')"><span class="avatar">${initials(t.name)}</span>
+            return `<button class="row-item tap" data-q="${esc(t.name.toLowerCase())}" onclick="openTeacher('${esc(t.name)}')">${face('teacher', t.name)}
         <span class="row-main"><b>${esc(t.name)}</b><small>${esc(schoolsOfTeacher(t).map((s) => s.name).join(', '))} · avg delay ${avgLate(t.name)} min</small></span>
         <span class="row-end">${lv ? badge('On leave', 'amber') : ''}${overdueWeeks(t.name).length ? badge('Plan not updated', 'red') : ''}${rag.avg != null ? `<span class="score">${rag.avg.toFixed(1)}</span>` : ''}${ragPill(rag.key)}${ic('chevR', 18)}</span></button>`;
         }).join('')}</div>`;
@@ -1578,7 +1710,7 @@ function teacherDetail(u, name) {
     return backLink(u.role === 'mod' ? 'My teachers' : 'All teachers', 'closeTeacher()') +
         pageHead(esc(name), esc(schoolsOfTeacher(t).map((s) => s.name).join(', ')) + (u.role === 'ceo' ? ` · Coordinator ${esc(t.mod)}` : '')) +
         (lv ? `<div class="notice info">${ic('calx', 18)}<span>On approved ${esc(lv.type.toLowerCase())} leave until ${fmtD(lv.to)}.</span></div>` : '') +
-        perfInner(name) + (u.role === 'mod' || canSeeProfiles(u) ? profileBlock(name) : '') + planHistory(name) +
+        perfInner(name) + (u.role === 'mod' || canSeeProfiles(u) ? profileBlock(name) : '') + progressCard([name]) + planHistory(name) +
         (u.role === 'mod' ? `<h2 class="section-title">Tasks</h2>
       <section class="card"><label class="field-l" for="tkTitle">Assign a task</label><input id="tkTitle" placeholder="e.g. Submit Module 3 lesson plan">
         <div class="grid2"><div><label class="field-l" for="tkDue">Due</label><input id="tkDue" type="date" min="${todayStr()}"></div><div><label class="field-l" for="tkDetail">Detail</label><input id="tkDetail" placeholder="Optional"></div></div>
@@ -1610,8 +1742,10 @@ function mVisit(u) {
       <label class="field-l" for="vSchool">School</label>
       <select id="vSchool">${schools.map((s) => `<option value="${s.id}"${todays.some((p) => p.school === s.id) ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
       <button class="btn block" onclick="unlockVisit()">${ic('pin', 18)}Verify I'm at this school</button>
-      <p class="hint">First visit to a school? You'll be asked to set its geofence to where you're standing.</p>
     </section>
+    <h2 class="section-title">School locations · ${schools.filter((s) => s.lat != null).length}/${schools.length} set</h2>
+    <p class="hint">Teachers check in only within ${CONFIG.geofenceMeters} m of these points. Paste the school's Google Maps link, or stand at the gate and use your location.</p>
+    ${schoolLocations(schools)}
     <h2 class="section-title">Recent visits</h2>
     <div class="card list">${STORE.get('feedback').filter((f) => f.mod === u.name).slice(-8).reverse().map(visitRow).join('') || empty('pin', 'No visits logged yet', 'Your submitted feedback appears here.')}</div>`;
 }
@@ -1880,7 +2014,8 @@ function cCoords(u) {
         <span class="coord-score"><b>${sc != null ? sc.toFixed(1) : '—'}</b><small>score</small></span></div>
         <div class="mini-stats"><span><b>${vs.length}</b>visits</span><span><b>${vs.filter((f) => f.date.startsWith(month)).length}</b>this month</span><span><b>${upcoming}</b>planned</span></div>
         <div class="legend tight">${['green', 'amber', 'red'].map((k) => `<span><i class="seg-${k}"></i><b>${c[k]}</b>${cap(k)}</span>`).join('')}</div></section>`;
-        }).join('')}</div>`;
+        }).join('')}</div>
+    <h2 class="section-title">School locations · ${STORE.get('schools').filter((s) => s.lat != null).length}/${STORE.get('schools').length} set</h2>${schoolLocations(STORE.get('schools'))}`;
 }
 let LVF = 'Pending';
 function setLVF(k) { LVF = k; render(); }
