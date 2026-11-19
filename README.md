@@ -175,7 +175,13 @@ request, a coordinator's visit or school pin, Parth's approval, HR's update — 
 - Library files and update attachments (≤ 20 MB) are stored by the server too.
 - Without a server (the Claude preview, a copy opened from disk) the app runs on-device only, as before.
 
-**Back up** `robobox-data/` (state.json, passwords.json, secret.key, files/) — that folder *is* the data.
+**Backups.** `robobox-data/` *is* the data (state.json, passwords.json, secret.key, files/).
+- **Daily copies, automatic:** the first request each day (India time) copies `state.json` and `passwords.json` to
+  `robobox-data/backups/<date>/`; copies older than 30 days are deleted. To restore a day, copy its `state.json` over
+  `robobox-data/state.json`. Uploaded files are never changed or deleted by the app, so they aren't copied.
+- **Parth's downloads** (Overview → *Data & backups*): **Full backup** = the server's `state.json` exactly as stored
+  (restorable; no password hashes) and **All data (Excel)** = every record, one sheet per kind. Keep one offline now and then.
+- Also include `robobox-data/` in the hosting account's own backups.
 
 **Still to do:** the per-role rules (teachers don't see scores; coordinators see their own teachers) are enforced
 in the app, not by `api.php`; any signed-in person could read the raw data with the right tools. Fine for an

@@ -8,7 +8,7 @@ const CONFIG: AppConfig = {
   ayStart: '2026-06-15',
   visitsFrom: '2026-11', // first month the 1-visit-per-school target is tracked; earlier months never ask for a reason // Monday of 'Week 1' when lesson plans are numbered by week — confirm the AY start.
   leaders: [
-    { name: 'Parth', title: 'CEO', top: true, full: true, profiles: true },
+    { name: 'Parth', title: 'CEO', top: true, full: true, profiles: true, backup: true },
     { name: 'Manish', title: 'Head, Teacher Network', top: true, full: true },
     // Outsight team: Parth's full view, but no approvals or decisions.
     { name: 'Sajesh', title: 'Outsight team', top: false, full: true, profiles: true },

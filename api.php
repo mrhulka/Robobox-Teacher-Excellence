@@ -11,12 +11,18 @@
 //   POST ?a=push      {ops:[{coll,op:put|patch|del,id,rec}]} (token) → {v}
 //   POST ?a=password  {current,next}  (token)
 //   POST ?a=file&id=… raw body (token) · GET ?a=file&id=…&token=… → the file
+//   GET  ?a=backup (token, Parth) → the whole data file, exactly as stored (no password hashes)
 //   GET  ?a=ping → {ok:true}   (the app uses this to know a server is there)
+//
+// Daily copies: the first request each day copies state.json and passwords.json into backups/<date>/ and
+// deletes copies older than 30 days. To restore a day, copy its state.json back over robobox-data/state.json.
+// Uploaded files (files/) are never changed or deleted by the app, so they are not copied.
 //
 // ponytail: any signed-in person may write any collection; the per-role rules (teachers can't see scores,
 // coordinators see their own teachers) are enforced in the app, not here yet.
 
 declare(strict_types=1);
+date_default_timezone_set('Asia/Kolkata'); // daily copies are dated in India time
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -29,6 +35,8 @@ const COLLS = ['schools', 'attendance', 'feedback', 'leaves', 'requests', 'tasks
 const ROLES = ['teacher', 'mod', 'ceo', 'ops', 'hr'];
 // Leadership sign-ins — keep in step with CONFIG.leaders in src/config.ts.
 const LEADERS = ['Parth', 'Manish', 'Sajesh', 'Yash'];
+const BACKUP_BY = ['Parth']; // who may download the full backup (CONFIG.leaders: backup: true)
+const KEEP_DAYS = 30;
 
 function out(int $code, $body): void { http_response_code($code); echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); exit; }
 function body(): array { $j = json_decode(file_get_contents('php://input') ?: '', true); return is_array($j) ? $j : []; }
@@ -44,6 +52,24 @@ $SECRET = trim((string) file_get_contents($secretFile));
 // Every write happens under this lock, so two phones saving at once can't lose each other's change.
 $lock = fopen("$DATA/.lock", 'c');
 function locked(callable $fn) { global $lock; flock($lock, LOCK_EX); try { return $fn(); } finally { flock($lock, LOCK_UN); } }
+
+// Once a day: a dated copy of the data, and copies older than KEEP_DAYS removed.
+function dailyCopy(): void {
+  global $DATA; $dir = "$DATA/backups"; $today = date('Y-m-d');
+  if (is_dir("$dir/$today") || !is_file("$DATA/state.json")) return;
+  locked(function () use ($dir, $today) {
+    global $DATA;
+    if (is_dir("$dir/$today")) return; // another request got here first
+    if (!is_dir("$dir/$today") && !mkdir("$dir/$today", 0700, true)) return;
+    foreach (['state.json', 'passwords.json'] as $f) if (is_file("$DATA/$f")) copy("$DATA/$f", "$dir/$today/$f");
+    $cutoff = date('Y-m-d', strtotime('-' . KEEP_DAYS . ' days'));
+    foreach (glob("$dir/*", GLOB_ONLYDIR) ?: [] as $d) {
+      $name = basename($d);
+      if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $name) && $name < $cutoff) { foreach (glob("$d/*") ?: [] as $f) unlink($f); rmdir($d); }
+    }
+  });
+}
+dailyCopy();
 
 // --- tokens: role|name|expiry, signed with the server secret (30 days) ---
 function b64u(string $s): string { return rtrim(strtr(base64_encode($s), '+/', '-_'), '='); }
@@ -112,6 +138,13 @@ if ($a === 'password' && $method === 'POST') {
   if (mb_strlen($next) < 6 || mb_strtolower($next) === mb_strtolower($me['n'])) out(400, ['error' => 'weak']);
   locked(function () use ($key, $next) { global $DATA; $pws = readJson("$DATA/passwords.json", []); $pws[$key] = password_hash($next, PASSWORD_DEFAULT); writeJson("$DATA/passwords.json", $pws); });
   out(200, ['ok' => true]);
+}
+
+if ($a === 'backup' && $method === 'GET') {
+  if ($me['r'] !== 'ceo' || !in_array(mb_strtolower($me['n']), array_map('mb_strtolower', BACKUP_BY), true)) out(403, ['error' => 'forbidden']);
+  header('Content-Disposition: attachment; filename="robobox-backup-' . date('Y-m-d') . '.json"');
+  if (is_file("$DATA/state.json")) readfile("$DATA/state.json"); else echo '{"v":0,"data":{}}';
+  exit;
 }
 
 if ($a === 'pull' && $method === 'GET') {

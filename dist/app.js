@@ -2303,6 +2303,7 @@ function cOverview(u) {
       ${pending.length ? `<button class="btn block${isTop(u) ? '' : ' ghost'}" onclick="go('leave')">${isTop(u) ? 'Review leave' : 'See leave'}</button>` : ''}</section>` : ''}
     ${seesAll(u) ? coordVisitsCard() : ''}
     <h2 class="section-title">Operations · component requests</h2>${opsKpiCards()}
+    ${backupCard(u)}
     ${eventsCard(u, 'School events · next 2 weeks')}
     ${canSeeProfiles(u) ? birthdayCard(u, 14) : ''}
     <h2 class="section-title">Needs attention</h2>
@@ -2532,6 +2533,67 @@ function saveVisitReason(month, done, target) {
     STORE.add('visitReasons', { id: `vr_${u.name}_${month}`.replace(/[^A-Za-z0-9_-]/g, '_'), mod: u.name, month, done, target, reason, at: new Date().toISOString() });
     flash('ok', 'Reason saved — leadership can see it.');
     render();
+}
+/* ================= Backups (Parth) ================= */
+const canBackup = (u) => { var _a; return u.role === 'ceo' && !!((_a = leaderOf(u.name)) === null || _a === void 0 ? void 0 : _a.backup); };
+function backupCard(u) {
+    if (!canBackup(u))
+        return '';
+    return `<h2 class="section-title">Data &amp; backups</h2><section class="card">
+    <p class="hint" style="margin-top:0">${STORE.shared ? `Everything is saved on the server as it happens. The server also keeps a copy of each day's data for 30 days. Download a full backup now and then, and keep it somewhere safe.` : 'This copy runs on this device only.'}</p>
+    <div class="btn-row"><button class="btn ghost sm" onclick="downloadBackup()">${ic('download', 16)}Full backup</button><button class="btn ghost sm" onclick="downloadAllData()">${ic('download', 16)}All data (Excel)</button></div>
+    <p class="hint">Full backup = the server's data file exactly as stored, for restoring. Excel = the same records, one sheet each, for reading. Uploaded files (handbook etc.) stay on the server.</p></section>`;
+}
+// The server's data file, byte for byte (restorable as robobox-data/state.json). On-device copies export the local records.
+async function downloadBackup() {
+    const u = SESSION.get();
+    if (!canBackup(u))
+        return;
+    if (STORE.shared) {
+        try {
+            const r = await STORE.api('a=backup');
+            if (!r.ok) {
+                flash('err', 'Backup not available — please sign in again.');
+                return;
+            }
+            triggerDownload(await r.blob(), `robobox-backup-${todayStr()}.json`);
+            flash('ok', 'Backup downloaded.');
+        }
+        catch (e) {
+            flash('err', 'Can’t reach the server — try again when you’re online.');
+        }
+        return;
+    }
+    const data = {};
+    Object.keys(STORE_COLLS).forEach((k) => { data[k] = STORE.get(k); });
+    triggerDownload(new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), data }, null, 1)], { type: 'application/json' }), `robobox-backup-${todayStr()}.json`);
+}
+const STORE_COLLS = {
+    attendance: 'Attendance', modCheckins: 'Coordinator check-ins', feedback: 'Reviews', leaves: 'Leave', planUpdates: 'Lesson updates',
+    lessons: 'Lesson plans', requests: 'Requests', tasks: 'Tasks', profiles: 'Profiles', members: 'Added members', events: 'School events',
+    notices: 'Official updates', holidays: 'Holidays', materials: 'Library', plans: 'Visit plans', visitReasons: 'Visit reasons', schools: 'Schools', teachers: 'Teachers',
+};
+// Every record, one sheet per kind. Nested values are written as text; photos are noted, not embedded (Excel cells hold 32k characters).
+async function downloadAllData() {
+    const u = SESSION.get();
+    if (!canBackup(u))
+        return;
+    await STORE.sync();
+    const cell = (v) => { if (v == null)
+        return ''; if (typeof v === 'object')
+        v = JSON.stringify(v); const s = String(v); return s.length > 32000 ? s.slice(0, 32000) + '…' : v; };
+    const sheets = [];
+    Object.keys(STORE_COLLS).forEach((k) => {
+        const recs = STORE.get(k);
+        const cols = [];
+        recs.forEach((r) => Object.keys(r).forEach((c) => { if (!cols.includes(c))
+            cols.push(c); }));
+        if (!cols.length)
+            cols.push('(no records yet)');
+        sheets.push([STORE_COLLS[k], [cols.map((c) => c === 'selfie' ? 'photo' : c), ...recs.map((r) => cols.map((c) => c === 'selfie' ? (r[c] ? 'yes' : '') : cell(r[c])))]]);
+    });
+    downloadBook(`robobox-all-data-${todayStr()}.xlsx`, sheets);
+    flash('ok', 'All data downloaded.');
 }
 /* ================= All-schools workbook (leadership) ================= */
 function reportSchools() {

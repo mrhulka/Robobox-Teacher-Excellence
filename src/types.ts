@@ -63,7 +63,7 @@ interface Collections {
 interface Kit { id: string; name: string; items: [string, number | string][]; } // [component, standard kit qty]
 // top = decides (approves leave, loads lesson plans, adds coordinators, moves school pins); full = sees everything Parth sees;
 // profiles = sees every profile + birthdays and the repository download.
-interface Leader { name: string; title: string; top: boolean; full?: boolean; profiles?: boolean; } // top = sees coordinator scores, approves leave, loads lesson plans
+interface Leader { name: string; title: string; top: boolean; full?: boolean; profiles?: boolean; backup?: boolean; } // backup = downloads the full data backup // top = sees coordinator scores, approves leave, loads lesson plans
 
 interface AppConfig {
   geofenceMeters: number;
