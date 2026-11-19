@@ -1,0 +1,22 @@
+# Robobox Teacher Excellence — hosting rules (Apache / LiteSpeed, e.g. Hostinger)
+Options -Indexes
+
+RewriteEngine On
+# HTTPS only: phone GPS (check-in geofence) and camera only work on a secure origin.
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# Nothing but the app itself is served: no git metadata, TypeScript sources or tooling files.
+RewriteRule (^|/)\.(?!well-known/) - [F]
+RewriteRule ^(src|node_modules)(/|$) - [F]
+RewriteRule \.(ts|md|json|map|lock)$ - [F]
+
+<IfModule mod_headers.c>
+  # Always revalidate, so a new deploy reaches everyone on their next open (ETags keep it cheap).
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Permissions-Policy "geolocation=(self), camera=(self), microphone=()"
+</IfModule>
